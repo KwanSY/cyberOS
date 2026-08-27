@@ -210,7 +210,7 @@ export const BrowserApp: React.FC = () => {
                 {/* Company Logo Banner */}
                 <div className="flex items-center gap-4 bg-cyber-950/70 p-4 rounded border border-cyber-700">
                   <img
-                    src="/assets/tianyu_logo.jpg"
+                    src="./assets/tianyu_logo.jpg"
                     alt="Logo"
                     className="w-16 h-16 rounded object-cover border border-cyan-500/40"
                   />
@@ -230,9 +230,9 @@ export const BrowserApp: React.FC = () => {
                     </div>
                     <div className="flex gap-4 items-center">
                       <img
-                        src="/assets/portrait_lin.jpg"
+                        src="./assets/portrait_lin.jpg"
                         alt="林默员工证"
-                        onClick={() => setActiveImageZoom('/assets/portrait_lin.jpg')}
+                        onClick={() => setActiveImageZoom('./assets/portrait_lin.jpg')}
                         className="w-24 h-32 object-cover rounded border border-cyan-500/60 shadow-md cursor-pointer hover:scale-105 transition-transform shrink-0"
                       />
                       <div className="space-y-1.5 text-xs text-slate-300">
@@ -261,9 +261,9 @@ export const BrowserApp: React.FC = () => {
                     </div>
                     <div className="flex gap-4 items-center">
                       <img
-                        src="/assets/portrait_chen.jpg"
+                        src="./assets/portrait_chen.jpg"
                         alt="陈建国员工证"
-                        onClick={() => setActiveImageZoom('/assets/portrait_chen.jpg')}
+                        onClick={() => setActiveImageZoom('./assets/portrait_chen.jpg')}
                         className="w-24 h-32 object-cover rounded border border-amber-500/60 shadow-md cursor-pointer hover:scale-105 transition-transform shrink-0"
                       />
                       <div className="space-y-1.5 text-xs text-slate-300">
@@ -292,9 +292,9 @@ export const BrowserApp: React.FC = () => {
               <div className="space-y-4">
                 <div className="bg-black/50 p-3 rounded border border-red-900/60 flex items-center gap-4">
                   <img
-                    src="/assets/confidential_chimera.jpg"
+                    src="./assets/confidential_chimera.jpg"
                     alt="绝密公文"
-                    onClick={() => setActiveImageZoom('/assets/confidential_chimera.jpg')}
+                    onClick={() => setActiveImageZoom('./assets/confidential_chimera.jpg')}
                     className="w-32 h-44 object-cover rounded border border-red-700 shadow cursor-pointer hover:scale-105 transition-transform shrink-0"
                   />
                   <div className="space-y-2">
@@ -325,9 +325,9 @@ export const BrowserApp: React.FC = () => {
                   </div>
                   <div className="relative rounded overflow-hidden border border-cyber-700">
                     <img
-                      src="/assets/cctv_server_corridor.jpg"
+                      src="./assets/cctv_server_corridor.jpg"
                       alt="CCTV Capture"
-                      onClick={() => setActiveImageZoom('/assets/cctv_server_corridor.jpg')}
+                      onClick={() => setActiveImageZoom('./assets/cctv_server_corridor.jpg')}
                       className="w-full h-64 object-cover cursor-pointer hover:scale-102 transition-transform"
                     />
                     <div className="absolute top-2 left-2 bg-black/70 text-emerald-400 font-mono text-[10px] px-2 py-0.5 rounded">

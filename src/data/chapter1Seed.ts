@@ -382,7 +382,7 @@ export const INITIAL_MAILS: MailItem[] = [
       {
         name: 'lucky_dog.jpg',
         type: 'image',
-        url: '/assets/lucky_dog.jpg',
+        url: './assets/lucky_dog.jpg',
         size: '922 KB',
       },
     ],
@@ -412,8 +412,8 @@ export const INITIAL_WEB_PAGES: WebPage[] = [
     date: '2010-05-20',
     summary: '天宇科技创始团队、管理高层及核心研发架构师人员名录。',
     keywords: ['天宇科技', '官网', '团队', '林默', '陈建国', '工号', 'EMP-0417', 'EMP-0003', '王思远', '赵凯'],
-    bannerImage: '/assets/tianyu_logo.jpg',
-    avatarImage: '/assets/portrait_lin.jpg',
+    bannerImage: './assets/tianyu_logo.jpg',
+    avatarImage: './assets/portrait_lin.jpg',
     contentType: 'profile',
     content: `天宇科技（Tianyu Technology）成立于 2002 年，致力于生物医药大数据与临床计算架构。
 
@@ -434,7 +434,7 @@ export const INITIAL_WEB_PAGES: WebPage[] = [
     date: '2010-04-12',
     summary: '陈建国副总裁主导海外跨国医疗战略合作与离岸资产管理。',
     keywords: ['陈建国', '副总裁', '海外', 'IP', '空壳公司', 'Aegis', '198.51.100.24'],
-    bannerImage: '/assets/portrait_chen.jpg',
+    bannerImage: './assets/portrait_chen.jpg',
     contentType: 'article',
     content: `陈建国先生于 2004 年加入天宇科技。
 
@@ -451,7 +451,7 @@ export const INITIAL_WEB_PAGES: WebPage[] = [
     date: '2010-06-05',
     summary: '奇美拉三期临床试验核心患者数据集存储规范与加密策略。',
     keywords: ['奇美拉', 'Project Chimera', '临床试验', '受试者', '绝密', '数据', '导出', 'chimera_v3_patient_data.tar.gz', 'chimera_phase2_summary.doc'],
-    bannerImage: '/assets/confidential_chimera.jpg',
+    bannerImage: './assets/confidential_chimera.jpg',
     contentType: 'article',
     content: `【文件密级：绝密 TOP SECRET】
 
@@ -495,7 +495,7 @@ export const INITIAL_WEB_PAGES: WebPage[] = [
     date: '2010-06-10 04:00',
     summary: '暴雨雷击致外网中断调查报告，附 15 楼机房走廊监控抓拍复核。',
     keywords: ['安保部事件通报', '监控', '断网', '23:38', '23:30', '人影', '机房走廊', '走廊监控', '伪造打卡'],
-    bannerImage: '/assets/cctv_server_corridor.jpg',
+    bannerImage: './assets/cctv_server_corridor.jpg',
     contentType: 'incident_report',
     content: `【安保部紧急事件调查通报】
 
