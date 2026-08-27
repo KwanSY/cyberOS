@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  /* Retro custom scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(12, 19, 34, 0.7);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(88, 126, 198, 0.4);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(88, 126, 198, 0.8);
+  }
+}
+
+/* CRT Screen Effect */
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+}
+
+.crt-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.28) 50%
+  ),
+  linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 3px, 6px 100%;
+}
+
+.crt-vignette {
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(0, 0, 0, 0.95);
+}
+
+.crt-glow {
+  text-shadow: 0 0 3px rgba(0, 255, 102, 0.6), 0 0 6px rgba(0, 255, 102, 0.3);
+}
+
+.crt-amber-glow {
+  text-shadow: 0 0 3px rgba(255, 176, 0, 0.6), 0 0 6px rgba(255, 176, 0, 0.3);
+}
+
+.crt-screen-curved {
+  border-radius: 8px;
+}
+
+/* Subtle CRT phosphor flicker */
+@keyframes flicker {
+  0% { opacity: 0.985; }
+  50% { opacity: 1; }
+  100% { opacity: 0.99; }
+}
+
+.crt-flicker {
+  animation: flicker 0.12s infinite;
+}
+
+/* Bureaucratic Document Font & Official Stamp */
+.font-bureaucracy {
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", serif;
+}
