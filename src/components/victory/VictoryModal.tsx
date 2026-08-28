@@ -6,12 +6,14 @@ import {
   ShieldCheck,
   Sparkles,
   FileCheck2,
+  ArrowRight,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const VictoryModal: React.FC = () => {
   const isVictoryModalOpen = useGameStore((s) => s.isVictoryModalOpen);
   const setVictoryModalOpen = useGameStore((s) => s.setVictoryModalOpen);
+  const setClosureModalOpen = useGameStore((s) => s.setClosureModalOpen);
   const collectedWords = useGameStore((s) => s.collectedWords);
 
   if (!isVictoryModalOpen) return null;
@@ -23,6 +25,12 @@ export const VictoryModal: React.FC = () => {
       spread: 90,
       origin: { y: 0.5 },
     });
+  };
+
+  const handleProceedToClosure = () => {
+    soundService.playKeyClick(1.2);
+    setVictoryModalOpen(false);
+    setClosureModalOpen(true);
   };
 
   return (
@@ -87,13 +95,12 @@ export const VictoryModal: React.FC = () => {
           </div>
 
           {/* Chapter 2 Cliffhanger */}
-          <div className="bg-gradient-to-r from-purple-950/60 to-cyber-950 p-3.5 rounded border border-purple-800/60 text-xs text-purple-200 flex items-start gap-2.5">
-            <Sparkles className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+          <div className="bg-gradient-to-r from-red-950/60 to-cyber-950 p-3.5 rounded border border-red-800/60 text-xs text-red-200 flex items-start gap-2.5">
+            <Sparkles className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <div className="font-bold text-purple-300">【终章悬念 · Chapter 2 前瞻】</div>
+              <div className="font-bold text-amber-300">【案卷移送与上级指令】</div>
               <div className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
-                在陈建国被捕前销毁的私人加密盘里，专案组发现了他与匿名中间人“Zero”的最后一封通信记录：
-                <span className="italic text-purple-200">“奇美拉只是冰山一角，无名之城的系统深处，还藏着第 0 号受试者的脑电意识切片……”</span>
+                特别督查局已下达《案卷审查终结通报》，指令你立即签署归档并交回审计特权。但林默留下的死人开关中继信号仍在闪烁……
               </div>
             </div>
           </div>
@@ -110,11 +117,11 @@ export const VictoryModal: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setVictoryModalOpen(false)}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg flex items-center gap-1.5"
+            onClick={handleProceedToClosure}
+            className="px-6 py-2.5 bg-red-700 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-lg flex items-center gap-2 animate-pulse"
           >
-            <ShieldCheck className="w-4 h-4" />
-            <span>返回 CyberOS 桌面检视系统</span>
+            <span>进入案卷结案审查 (Proceed to Case Closure)</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>

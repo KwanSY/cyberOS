@@ -7,9 +7,14 @@ import { MailApp } from '../apps/MailApp';
 import { BrowserApp } from '../apps/BrowserApp';
 import { TerminalApp } from '../apps/TerminalApp';
 import { DeductionApp } from '../apps/DeductionApp';
+import { CyberPlayerApp } from '../apps/CyberPlayerApp';
+import { NotepadApp } from '../apps/NotepadApp';
 import { TrashApp } from '../apps/TrashApp';
 import { SystemInfoApp } from '../apps/SystemInfoApp';
 import { VictoryModal } from '../victory/VictoryModal';
+import { ClosurePromptModal } from '../onboarding/ClosurePromptModal';
+import { BadEndingScreen } from '../victory/BadEndingScreen';
+import { MeltdownEscapeModal } from '../victory/MeltdownEscapeModal';
 import {
   Mail,
   Globe,
@@ -20,9 +25,11 @@ import {
   Sparkles,
   Lightbulb,
   X,
+  AudioWaveform,
+  FileText,
 } from 'lucide-react';
 
-const DESKTOP_SHORTCUTS: Array<{
+const ALL_DESKTOP_SHORTCUTS: Array<{
   id: AppId;
   name: string;
   sub: string;
@@ -39,23 +46,37 @@ const DESKTOP_SHORTCUTS: Array<{
   {
     id: 'netquery',
     name: 'NetQuery',
-    sub: '档案检索浏览器',
+    sub: '档案/医疗检索',
     icon: Globe,
     color: 'from-emerald-600 to-teal-600',
   },
   {
     id: 'cyberterminal',
     name: 'CyberTerminal',
-    sub: '电子取证终端',
+    sub: '取证极简终端',
     icon: Terminal,
     color: 'from-emerald-700 to-green-900',
   },
   {
     id: 'deduction',
     name: 'DeductionBoard',
-    sub: '终审定罪看板',
+    sub: '定罪/弹劾看板',
     icon: FileCheck2,
     color: 'from-red-600 to-amber-700',
+  },
+  {
+    id: 'notepad',
+    name: 'Notepad',
+    sub: '审计员私人便签',
+    icon: FileText,
+    color: 'from-amber-500 to-orange-600',
+  },
+  {
+    id: 'cyberplayer',
+    name: 'CyberPlayer',
+    sub: '声纹录音播放器',
+    icon: AudioWaveform,
+    color: 'from-teal-600 to-emerald-800',
   },
   {
     id: 'trash',
@@ -74,6 +95,8 @@ const DESKTOP_SHORTCUTS: Array<{
 ];
 
 export const Desktop: React.FC = () => {
+  const currentChapter = useGameStore((s) => s.currentChapter);
+  const narrativeStage = useGameStore((s) => s.narrativeStage);
   const openWindow = useGameStore((s) => s.openWindow);
   const toast = useGameStore((s) => s.toast);
   const clearToast = useGameStore((s) => s.clearToast);
@@ -81,114 +104,163 @@ export const Desktop: React.FC = () => {
   const [showTutorialHint, setShowTutorialHint] = useState(true);
 
   const handleIconDoubleClick = (appId: AppId) => {
+    if (narrativeStage === 'BAD_ENDING') {
+      soundService.playBuzzer();
+      return;
+    }
     soundService.playKeyClick(1.2);
     openWindow(appId);
   };
 
+  const isBadEnding = narrativeStage === 'BAD_ENDING';
+
+  // In Chapter 1, only CyberPlayer is hidden. Notepad is visible from Chapter 1 as a key narrative foreshadowing!
+  const visibleShortcuts = ALL_DESKTOP_SHORTCUTS.filter((sc) => {
+    if (sc.id === 'cyberplayer') {
+      return currentChapter === 2;
+    }
+    return true;
+  });
+
   return (
-    <main className="flex-1 relative w-full h-[calc(100vh-76px)] overflow-hidden select-none bg-cyber-950">
-      {/* Industrial Grid Wallpaper & Circuit Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(#1e3052_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-b from-cyber-950/40 via-transparent to-cyber-950/80 pointer-events-none" />
+    <div className="flex-1 relative w-full h-[calc(100vh-76px)] overflow-hidden select-none bg-cyber-950">
+      {/* Interactive Desktop Workstation Surface */}
+      <main className={`absolute inset-0 w-full h-full ${isBadEnding ? 'grayscale brightness-40 pointer-events-none' : ''}`}>
+        {/* Industrial Grid Wallpaper & Circuit Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(#1e3052_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-cyber-950/40 via-transparent to-cyber-950/80 pointer-events-none" />
 
-      {/* CyberOS Watermark Emblem */}
-      <div className="absolute right-12 bottom-12 pointer-events-none opacity-10 flex flex-col items-end text-cyan-400">
-        <div className="text-6xl font-black font-mono tracking-tighter">CyberOS 1.0</div>
-        <div className="text-sm font-mono tracking-widest mt-1">FORENSIC SUITE · FA-9021</div>
-      </div>
+        {/* CyberOS Watermark Emblem */}
+        <div className="absolute right-12 bottom-12 pointer-events-none opacity-10 flex flex-col items-end text-cyan-400">
+          <div className="text-6xl font-black font-mono tracking-tighter">
+            {currentChapter === 2 ? 'CyberOS 1.1' : 'CyberOS 1.0'}
+          </div>
+          <div className="text-sm font-mono tracking-widest mt-1">
+            {currentChapter === 2
+              ? 'COVERT AUDIT SUITE · PRIVILEGE OVERRIDE'
+              : 'FORENSIC SUITE · FA-9021'}
+          </div>
+        </div>
 
-      {/* Non-intrusive Forensic Guidance Bubble */}
-      {showTutorialHint && (
-        <aside aria-label="取证侦办小贴士" className="absolute top-4 right-4 max-w-sm bg-cyber-900/90 border border-cyan-500/70 rounded-lg p-3 shadow-xl backdrop-blur-sm z-30 animate-fade-in font-sans text-xs text-slate-200">
-          <div className="flex items-center justify-between font-bold text-cyan-300 mb-1 font-mono">
-            <div className="flex items-center gap-1.5">
-              <Lightbulb className="w-4 h-4 text-amber-400" />
-              <span>数字法医取证指南</span>
+        {/* Non-intrusive Forensic Guidance Bubble */}
+        {showTutorialHint && !isBadEnding && (
+          <aside
+            aria-label="取证侦办小贴士"
+            className="absolute top-4 right-4 max-w-sm bg-cyber-900/90 border border-cyan-500/70 rounded-lg p-3 shadow-xl backdrop-blur-sm z-30 animate-fade-in font-sans text-xs text-slate-200"
+          >
+            <div className="flex items-center justify-between font-bold text-cyan-300 mb-1 font-mono">
+              <div className="flex items-center gap-1.5">
+                <Lightbulb className="w-4 h-4 text-amber-400" />
+                <span>数字法医取证指南</span>
+              </div>
+              <button
+                onClick={() => setShowTutorialHint(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              {currentChapter === 2 ? (
+                <>
+                  在 <span className="text-emerald-300 font-semibold">NetQuery (MedQuery)</span> 调阅 07 号受试者档案；在终端运行 <code className="bg-black/60 px-1 py-0.5 rounded text-cyan-300 font-mono">decrypt</code> 解密录音，使用 <code className="bg-black/60 px-1 py-0.5 rounded text-cyan-300 font-mono">diff</code> 与 <code className="bg-black/60 px-1 py-0.5 rounded text-cyan-300 font-mono">trace</code> 穿透离岸洗钱黑幕！
+                </>
+              ) : (
+                <>
+                  在邮件与网页中点击 <span className="text-amber-300 underline font-semibold">高亮实体词条</span> 可直接提取入【词块库】；在终端运行 <code className="bg-black/60 px-1 py-0.5 rounded text-cyan-300 font-mono">decrypt</code> 与 <code className="bg-black/60 px-1 py-0.5 rounded text-cyan-300 font-mono">diff</code> 可解锁深层铁证！
+                </>
+              )}
+            </p>
+          </aside>
+        )}
+
+        {/* Toast Notification (e.g. Word Pickup) */}
+        {toast && (
+          <div className="fixed top-12 left-1/2 -translate-x-1/2 bg-cyber-900 border-2 border-cyan-400 text-cyan-100 px-4 py-2 rounded-full shadow-2xl z-50 flex items-center gap-2 animate-fade-in font-sans text-xs">
+            <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
+            <span className="font-bold">{toast.text}</span>
             <button
-              onClick={() => setShowTutorialHint(false)}
-              className="text-slate-400 hover:text-white"
+              onClick={clearToast}
+              className="ml-2 text-slate-400 hover:text-white"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
           </div>
-          <p className="text-[11px] text-slate-300 leading-relaxed">
-            在邮件与网页中点击 <span className="text-amber-300 underline font-semibold">高亮实体词条</span> 可直接提取入【词块库】；在终端运行 <code className="bg-black/60 px-1 py-0.5 rounded text-cyan-300 font-mono">decrypt</code> 与 <code className="bg-black/60 px-1 py-0.5 rounded text-cyan-300 font-mono">diff</code> 可解锁深层铁证！
-          </p>
-        </aside>
-      )}
+        )}
 
-      {/* Toast Notification (e.g. Word Pickup) */}
-      {toast && (
-        <div className="fixed top-12 left-1/2 -translate-x-1/2 bg-cyber-900 border-2 border-cyan-400 text-cyan-100 px-4 py-2 rounded-full shadow-2xl z-50 flex items-center gap-2 animate-fade-in font-sans text-xs">
-          <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
-          <span className="font-bold">{toast.text}</span>
-          <button
-            onClick={clearToast}
-            className="ml-2 text-slate-400 hover:text-white"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
-      )}
-
-      {/* Desktop Icon Grid */}
-      <div className="p-6 grid grid-flow-col grid-rows-4 gap-6 w-max select-none z-10 relative">
-        {DESKTOP_SHORTCUTS.map((sc) => {
-          const Icon = sc.icon;
-          return (
-            <button
-              key={sc.id}
-              type="button"
-              onDoubleClick={() => handleIconDoubleClick(sc.id)}
-              onClick={() => soundService.playKeyClick(1.05)}
-              className="w-24 flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-cyber-800/60 border border-transparent hover:border-cyber-600/60 focus:bg-cyber-800/80 focus:border-cyan-500/80 transition-all group text-left cursor-pointer"
-            >
-              <div
-                className={`w-12 h-12 rounded-xl bg-gradient-to-br ${sc.color} p-2.5 flex items-center justify-center shadow-lg border border-white/20 group-hover:scale-105 group-hover:shadow-cyan-500/20 transition-all`}
+        {/* Desktop Icon Grid */}
+        <div className="p-6 grid grid-flow-col grid-rows-4 gap-6 w-max select-none z-10 relative">
+          {visibleShortcuts.map((sc) => {
+            const Icon = sc.icon;
+            return (
+              <button
+                key={sc.id}
+                type="button"
+                onDoubleClick={() => handleIconDoubleClick(sc.id)}
+                onClick={() => soundService.playKeyClick(1.05)}
+                className="w-24 flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-cyber-800/60 border border-transparent hover:border-cyber-600/60 focus:bg-cyber-800/80 focus:border-cyan-500/80 transition-all group text-left cursor-pointer"
               >
-                <Icon className="w-full h-full text-white" />
-              </div>
-              <div className="text-center">
-                <div className="text-xs font-bold text-slate-200 group-hover:text-cyan-300 leading-tight">
-                  {sc.name}
+                <div
+                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${sc.color} p-2.5 flex items-center justify-center shadow-lg border border-white/20 group-hover:scale-105 group-hover:shadow-cyan-500/20 transition-all`}
+                >
+                  <Icon className="w-full h-full text-white" />
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                  {sc.sub}
+                <div className="text-center">
+                  <div className="text-xs font-bold text-slate-200 group-hover:text-cyan-300 leading-tight">
+                    {sc.name}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                    {sc.sub}
+                  </div>
                 </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+              </button>
+            );
+          })}
+        </div>
 
-      {/* Windows Layer */}
-      <WindowFrame appId="mailbox">
-        <MailApp />
-      </WindowFrame>
+        {/* Windows Layer */}
+        <WindowFrame appId="mailbox">
+          <MailApp />
+        </WindowFrame>
 
-      <WindowFrame appId="netquery">
-        <BrowserApp />
-      </WindowFrame>
+        <WindowFrame appId="netquery">
+          <BrowserApp />
+        </WindowFrame>
 
-      <WindowFrame appId="cyberterminal">
-        <TerminalApp />
-      </WindowFrame>
+        <WindowFrame appId="cyberterminal">
+          <TerminalApp />
+        </WindowFrame>
 
-      <WindowFrame appId="deduction">
-        <DeductionApp />
-      </WindowFrame>
+        <WindowFrame appId="deduction">
+          <DeductionApp />
+        </WindowFrame>
 
-      <WindowFrame appId="trash">
-        <TrashApp />
-      </WindowFrame>
+        {/* Notepad is available in all chapters */}
+        <WindowFrame appId="notepad">
+          <NotepadApp />
+        </WindowFrame>
 
-      <WindowFrame appId="systeminfo">
-        <SystemInfoApp />
-      </WindowFrame>
+        {/* CyberPlayer is available when Chapter 2 is active */}
+        {currentChapter === 2 && (
+          <WindowFrame appId="cyberplayer">
+            <CyberPlayerApp />
+          </WindowFrame>
+        )}
 
-      {/* Victory Celebration Modal */}
+        <WindowFrame appId="trash">
+          <TrashApp />
+        </WindowFrame>
+
+        <WindowFrame appId="systeminfo">
+          <SystemInfoApp />
+        </WindowFrame>
+      </main>
+
+      {/* Top Modal Overlays Layer (Always Clickable) */}
       <VictoryModal />
-    </main>
+      <ClosurePromptModal />
+      <BadEndingScreen />
+      <MeltdownEscapeModal />
+    </div>
   );
 };

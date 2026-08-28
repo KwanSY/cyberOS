@@ -12,6 +12,8 @@ import {
   Image as ImageIcon,
   Radio,
   Building,
+  AudioWaveform,
+  PlayCircle,
 } from 'lucide-react';
 
 export const MailApp: React.FC = () => {
@@ -20,6 +22,8 @@ export const MailApp: React.FC = () => {
   const activeFolder = useGameStore((s) => s.activeMailFolder);
   const selectMail = useGameStore((s) => s.selectMail);
   const setActiveFolder = useGameStore((s) => s.setActiveMailFolder);
+  const openWindow = useGameStore((s) => s.openWindow);
+  const discoverAudioTrack = useGameStore((s) => s.discoverAudioTrack);
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
@@ -265,44 +269,71 @@ export const MailApp: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {currentMail.attachments.map((att, i) => (
-                    <div
-                      key={i}
-                      className="bg-cyber-900 border border-cyber-700 rounded-lg p-3 flex items-center gap-3 hover:border-cyan-500 transition-all group"
-                    >
-                      <div className="w-12 h-12 rounded bg-cyber-950 flex items-center justify-center shrink-0 overflow-hidden border border-cyber-800">
-                        {att.type === 'image' ? (
-                          <img
-                            src={att.url}
-                            alt={att.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
-                            onClick={() => {
-                              soundService.playKeyClick();
-                              setPreviewImage(att.url);
-                            }}
-                          />
-                        ) : (
-                          <ImageIcon className="w-6 h-6 text-cyan-400" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono font-bold text-xs text-slate-200 truncate">
-                          {att.name}
-                        </div>
-                        <div className="text-[10px] text-slate-500">{att.size}</div>
-                        <button
+                  {currentMail.attachments.map((att, i) => {
+                    const isAudio = att.type === 'audio' || att.name.endsWith('.enc') || att.name.endsWith('.wav');
+                    return (
+                      <div
+                        key={i}
+                        className="bg-cyber-900 border border-cyber-700 rounded-lg p-3 flex items-center gap-3 hover:border-cyan-500 transition-all group"
+                      >
+                        <div
+                          className="w-12 h-12 rounded bg-cyber-950 flex items-center justify-center shrink-0 overflow-hidden border border-cyber-800 cursor-pointer"
                           onClick={() => {
-                            soundService.playKeyClick();
-                            setPreviewImage(att.url);
+                            if (isAudio) {
+                              soundService.playKeyClick(1.2);
+                              discoverAudioTrack();
+                              openWindow('cyberplayer');
+                            }
                           }}
-                          className="mt-1 text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
                         >
-                          <Eye className="w-3 h-3" /> 查看物证照片
-                        </button>
+                          {isAudio ? (
+                            <AudioWaveform className="w-6 h-6 text-emerald-400 animate-pulse" />
+                          ) : att.type === 'image' ? (
+                            <img
+                              src={att.url}
+                              alt={att.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform cursor-pointer"
+                              onClick={() => {
+                                soundService.playKeyClick();
+                                setPreviewImage(att.url);
+                              }}
+                            />
+                          ) : (
+                            <ImageIcon className="w-6 h-6 text-cyan-400" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="font-mono font-bold text-xs text-slate-200 truncate">
+                            {att.name}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono">{att.size}</div>
+                          {isAudio ? (
+                            <button
+                              onClick={() => {
+                                soundService.playKeyClick(1.2);
+                                discoverAudioTrack();
+                                openWindow('cyberplayer');
+                              }}
+                              className="mt-1 text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold cursor-pointer"
+                            >
+                              <PlayCircle className="w-3.5 h-3.5" /> 打开声纹播放器
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                soundService.playKeyClick();
+                                setPreviewImage(att.url);
+                              }}
+                              className="mt-1 text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Eye className="w-3 h-3" /> 查看物证照片
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -325,7 +356,7 @@ export const MailApp: React.FC = () => {
             className="bg-cyber-900 p-3 rounded-lg border-2 border-cyan-500/80 shadow-2xl max-w-2xl max-h-[85vh] flex flex-col"
           >
             <div className="flex justify-between items-center pb-2 text-xs font-mono text-cyan-300">
-              <span>物证照片查看器 - Lucky</span>
+              <span>物证照片查看器 - {currentMail?.attachments?.[0]?.name || '证据照片'}</span>
               <button
                 onClick={() => setPreviewImage(null)}
                 className="text-slate-400 hover:text-white px-2 py-0.5 rounded bg-cyber-800"
