@@ -29,9 +29,9 @@ export const CyberPlayerApp: React.FC = () => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioSourceConnectedRef = useRef<boolean>(false);
 
-  // Initialize Real Audio Player Element & Web Audio Analyser
+  // Initialize Real Audio Player Element & Web Audio Analyser for voicemail_07.wav
   useEffect(() => {
-    const audio = new Audio('./assets/audio/voicemail_07.wav');
+    const audio = new Audio('/assets/audio/voicemail_07.wav');
     audio.preload = 'auto';
     audioRef.current = audio;
 
@@ -80,7 +80,6 @@ export const CyberPlayerApp: React.FC = () => {
       analyserRef.current = analyser;
       audioSourceConnectedRef.current = true;
     } catch (_) {
-      // Audio source might already be connected
     }
   };
 
@@ -93,9 +92,7 @@ export const CyberPlayerApp: React.FC = () => {
       ensureAudioSource();
       const playPromise = audio.play();
       if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Auto-play policy handled cleanly
-        });
+        playPromise.catch(() => {});
       }
     } else {
       audio.pause();

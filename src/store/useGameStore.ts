@@ -2,14 +2,18 @@ import { create } from 'zustand';
 import {
   AppId,
   AudioTrack,
+  BlockchainContract,
   Chapter2DeductionSlots,
+  Chapter3DeductionSlots,
   DeductionSlots,
   DeductionSubmissionResult,
   FsFile,
+  GitCommit,
   MailItem,
   NarrativeStage,
   Objective,
   ObjectiveId,
+  OnionBoardPost,
   SystemSettings,
   WebPage,
   WindowState,
@@ -34,12 +38,25 @@ import {
   CHAPTER2_WEB_PAGES,
   CHAPTER2_WORDS,
 } from '../data/chapter2Seed';
+import {
+  CHAPTER3_BLOCKCHAIN,
+  CHAPTER3_DEDUCTION_SOLUTION,
+  CHAPTER3_FILESYSTEM,
+  CHAPTER3_GIT_COMMITS,
+  CHAPTER3_HIVENET_PAGES,
+  CHAPTER3_MAILS,
+  CHAPTER3_NOTEPAD_CONTENT,
+  CHAPTER3_OBJECTIVES,
+  CHAPTER3_ONION_POSTS,
+  CHAPTER3_SYSTEM_INFO,
+  CHAPTER3_WORDS,
+} from '../data/chapter3Seed';
 import { soundService } from '../services/soundService';
 import confetti from 'canvas-confetti';
 
 export interface TerminalLine {
   id: string;
-  type: 'input' | 'output' | 'error' | 'success' | 'diff' | 'system' | 'trace';
+  type: 'input' | 'output' | 'error' | 'success' | 'diff' | 'system' | 'trace' | 'warning';
   text: string;
   diffLines?: Array<{ type: 'same' | 'added' | 'removed'; text: string }>;
   traceHops?: Array<{
@@ -60,7 +77,7 @@ interface ToastInfo {
 
 interface GameStoreState {
   // Global & Narrative Lifecycle
-  currentChapter: 1 | 2;
+  currentChapter: 1 | 2 | 3;
   narrativeStage: NarrativeStage;
   onboardingStep: 'bios' | 'identity' | 'warrant' | 'completed';
   setOnboardingStep: (step: 'bios' | 'identity' | 'warrant' | 'completed') => void;
@@ -71,6 +88,12 @@ interface GameStoreState {
   rewindDeadManSwitch: () => void;
   overrideAndMountChapter2: () => void;
   triggerChapter3Meltdown: () => void;
+  enterChapter3OnionGateway: () => void;
+  submitKeysToOmnimind: () => void;
+  rewindToOnionGateway: () => void;
+  rejectOmnimindAndMountChapter3: () => void;
+  triggerSandboxCollapse: () => void;
+  warpToChapter: (chapter: 1 | 2 | 3, directDarkWeb?: boolean) => void;
   setNarrativeStage: (stage: NarrativeStage) => void;
 
   // Dynamic Objectives
@@ -104,8 +127,9 @@ interface GameStoreState {
   setActiveMailFolder: (folder: 'leads' | 'inbox' | 'drafts' | 'trash') => void;
   markMailRead: (id: string) => void;
 
-  // NetQuery Browser App (with MedQuery)
+  // Browser App & HiveNet
   webPages: WebPage[];
+  onionPosts: OnionBoardPost[];
   searchQuery: string;
   activePageId: string | null;
   browserHistory: string[];
@@ -113,6 +137,12 @@ interface GameStoreState {
   setBrowserMode: (mode: 'web' | 'medquery') => void;
   setSearchQuery: (query: string) => void;
   navigateToPage: (pageId: string | null) => void;
+
+  // CyberGit & Blockchain
+  gitCommits: GitCommit[];
+  blockchain: BlockchainContract;
+  selectedCommitHash: string;
+  selectCommit: (hash: string) => void;
 
   // CyberTerminal App
   terminalLines: TerminalLine[];
@@ -127,7 +157,7 @@ interface GameStoreState {
   hasDiscoveredAudioTrack: boolean;
   discoverAudioTrack: () => void;
   isAudioPlaying: boolean;
-  audioPlaybackProgress: number; // 0 to 42 seconds
+  audioPlaybackProgress: number;
   currentSubtitleIndex: number;
   playAudio: () => void;
   pauseAudio: () => void;
@@ -138,14 +168,17 @@ interface GameStoreState {
   notepadContent: string;
   setNotepadContent: (content: string) => void;
 
-  // Deduction Board App (Chapter 1 & Chapter 2)
+  // Deduction Board App (Chapter 1, 2, 3)
   deductionSlots: DeductionSlots;
   setDeductionSlot: (slotKey: keyof DeductionSlots, wordText: string | null) => void;
   chapter2Slots: Chapter2DeductionSlots;
   setChapter2Slot: (slotKey: keyof Chapter2DeductionSlots, wordText: string | null) => void;
+  chapter3Slots: Chapter3DeductionSlots;
+  setChapter3Slot: (slotKey: keyof Chapter3DeductionSlots, wordText: string | null) => void;
   submissionResult: DeductionSubmissionResult | null;
   submitDeduction: () => void;
   submitChapter2Deduction: () => void;
+  submitChapter3Deduction: () => void;
   resetDeductionResult: () => void;
 
   // Modals & Victory
@@ -155,6 +188,11 @@ interface GameStoreState {
   setClosureModalOpen: (open: boolean) => void;
   isMeltdownEscapeModalOpen: boolean;
   setMeltdownEscapeModalOpen: (open: boolean) => void;
+  isOnionGatewayOpen: boolean;
+  setOnionGatewayOpen: (open: boolean) => void;
+  isSandboxCollapseOpen: boolean;
+  setSandboxCollapseOpen: (open: boolean) => void;
+  isFacelessPuppetActive: boolean;
 
   restartGame: () => void;
 
@@ -167,6 +205,7 @@ interface GameStoreState {
   caseId: string;
   osVersion: string;
 }
+
 
 const DEFAULT_WINDOWS: Record<AppId, WindowState> = {
   mailbox: {
@@ -193,9 +232,45 @@ const DEFAULT_WINDOWS: Record<AppId, WindowState> = {
     size: { width: 880, height: 560 },
     minSize: { width: 600, height: 400 },
   },
+  hivenet: {
+    id: 'hivenet',
+    title: 'HiveNet (洋葱暗网安全浏览器 v3.0)',
+    icon: 'Globe',
+    isOpen: false,
+    isMinimized: false,
+    isMaximized: false,
+    zIndex: 10,
+    position: { x: 80, y: 40 },
+    size: { width: 900, height: 580 },
+    minSize: { width: 640, height: 420 },
+  },
+  cybergit: {
+    id: 'cybergit',
+    title: 'CyberGit (代码提交历史与溯源审计器)',
+    icon: 'GitBranch',
+    isOpen: false,
+    isMinimized: false,
+    isMaximized: false,
+    zIndex: 8,
+    position: { x: 140, y: 65 },
+    size: { width: 880, height: 540 },
+    minSize: { width: 600, height: 400 },
+  },
+  chainexplorer: {
+    id: 'chainexplorer',
+    title: 'ChainExplorer (区块链智能合约账本浏览器)',
+    icon: 'Coins',
+    isOpen: false,
+    isMinimized: false,
+    isMaximized: false,
+    zIndex: 7,
+    position: { x: 200, y: 90 },
+    size: { width: 860, height: 520 },
+    minSize: { width: 580, height: 380 },
+  },
   cyberterminal: {
     id: 'cyberterminal',
-    title: 'CyberTerminal (电子取证极简终端 v1.1)',
+    title: 'CyberTerminal (极简暗网取证终端 v3.0)',
     icon: 'Terminal',
     isOpen: false,
     isMinimized: false,
@@ -368,14 +443,118 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
 
   triggerChapter3Meltdown: () => {
-    soundService.playMeltdownAlarm();
     set({
       narrativeStage: 'MELTDOWN_ESCAPE',
       isMeltdownEscapeModalOpen: true,
     });
+  },
+
+  // Chapter 3 Narrative Bridge Actions
+  enterChapter3OnionGateway: () => {
+    soundService.playGlitchStatic();
+    set({
+      narrativeStage: 'ONION_GATEWAY_PROMPT',
+      isMeltdownEscapeModalOpen: false,
+      isOnionGatewayOpen: true,
+    });
+  },
+
+  submitKeysToOmnimind: () => {
+    soundService.playBuzzer();
+    soundService.playBadEndingDrone();
+    set({
+      narrativeStage: 'BAD_ENDING_02',
+      isOnionGatewayOpen: false,
+    });
+  },
+
+  rewindToOnionGateway: () => {
+    soundService.stopBadEndingDrone();
+    soundService.playTapeRewind();
     setTimeout(() => {
-      soundService.playSpatialDoorKnock();
-    }, 1500);
+      set({
+        narrativeStage: 'ONION_GATEWAY_PROMPT',
+        isOnionGatewayOpen: true,
+      });
+    }, 600);
+  },
+
+  rejectOmnimindAndMountChapter3: () => {
+    soundService.playMatrixBroadcast();
+    soundService.playBeep(1400, 0.18);
+
+    set({
+      currentChapter: 3,
+      narrativeStage: 'HIVE_MESH_ACTIVE',
+      isOnionGatewayOpen: false,
+      isMeltdownEscapeModalOpen: false,
+      osVersion: CHAPTER3_SYSTEM_INFO.os_version,
+      systemTime: CHAPTER3_SYSTEM_INFO.virtual_time,
+      caseId: CHAPTER3_SYSTEM_INFO.case_id,
+      objectives: CHAPTER3_OBJECTIVES,
+      mails: CHAPTER3_MAILS,
+      selectedMailId: 'mail_301',
+      activeMailFolder: 'leads',
+      webPages: CHAPTER3_HIVENET_PAGES,
+      onionPosts: CHAPTER3_ONION_POSTS,
+      gitCommits: CHAPTER3_GIT_COMMITS,
+      blockchain: CHAPTER3_BLOCKCHAIN,
+      selectedCommitHash: 'c001fa9021',
+      filesystem: CHAPTER3_FILESYSTEM,
+      availableWordsPool: [...CH1_WORDS, ...CHAPTER2_WORDS, ...CHAPTER3_WORDS],
+      notepadContent: CHAPTER3_NOTEPAD_CONTENT,
+      isFacelessPuppetActive: false,
+      windows: {
+        ...DEFAULT_WINDOWS,
+        hivenet: {
+          ...DEFAULT_WINDOWS.hivenet,
+          isOpen: true,
+          isMinimized: false,
+          zIndex: 10,
+        },
+        mailbox: {
+          ...DEFAULT_WINDOWS.mailbox,
+          isOpen: false,
+        },
+      },
+      maxZIndex: 10,
+      terminalCwd: '/home/auditor',
+      terminalLines: [
+        {
+          id: 'l_ch3_1',
+          type: 'system',
+          text: 'CyberOS 3.0 (Onion P2P Mesh Edition) [TOR ROUTING: ACTIVE]',
+        },
+        {
+          id: 'l_ch3_2',
+          type: 'system',
+          text: '[MESH MOUNT] Tor hidden gateway connected: hive9.onion / aegis-leaks.onion',
+        },
+        {
+          id: 'l_ch3_3',
+          type: 'warning',
+          text: '[SECURITY] Target IP tracking locked: 172.56.21.89 (High-dimensional observer ping active)',
+        },
+        {
+          id: 'l_ch3_4',
+          type: 'output',
+          text: 'Type "help" to view Chapter 3 audit tools (git log, git diff, contract query, whoami --network, mesh broadcast).',
+        },
+      ],
+      toast: {
+        id: Date.now(),
+        text: '【蜂巢暗网已接入】CyberOS 3.0 洋葱网格启动，已挂载 HIVE-9 抵抗协议！',
+      },
+    });
+  },
+
+  triggerSandboxCollapse: () => {
+    soundService.playGlassShatter();
+    set({
+      narrativeStage: 'SANDBOX_COLLAPSE_ESCAPE',
+      isSandboxCollapseOpen: true,
+      isFacelessPuppetActive: true,
+    });
   },
 
   setNarrativeStage: (stage) => set({ narrativeStage: stage }),
@@ -425,7 +604,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       return;
     }
 
-    const allPool = [...CH1_WORDS, ...CHAPTER2_WORDS];
+    const allPool = [...CH1_WORDS, ...CHAPTER2_WORDS, ...CHAPTER3_WORDS];
     const seed = allPool.find(
       (w) => w.text.toLowerCase() === trimmed.toLowerCase()
     );
@@ -435,15 +614,15 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       category: customCategory || 'location_evidence',
       categoryLabel:
         customCategory === 'character'
-          ? '人物'
+          ? '人物/实体'
           : customCategory === 'timestamp'
-          ? '时间/编号'
+          ? '时间/编号/合约'
           : customCategory === 'action_motive'
-          ? '手段与动机'
+          ? '手段与机制'
           : customCategory === 'medical_term'
-          ? '医学术语'
+          ? '医学/算法'
           : customCategory === 'finance_org'
-          ? '资金与机构'
+          ? '资本与机构'
           : '地点/物证',
       description: '调查过程中提取的实体词条',
     };
@@ -465,7 +644,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   openWindow: (id: AppId) => {
     soundService.playKeyClick(1.1);
     set((state) => {
-      const win = state.windows[id];
+      const win = state.windows[id] || DEFAULT_WINDOWS[id];
       const newZ = state.maxZIndex + 1;
       return {
         maxZIndex: newZ,
@@ -520,6 +699,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   focusWindow: (id: AppId) => {
     set((state) => {
       const win = state.windows[id];
+      if (!win) return state;
       if (win.zIndex === state.maxZIndex && !win.isMinimized) return state;
       const newZ = state.maxZIndex + 1;
       return {
@@ -565,9 +745,6 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   selectMail: (id: string) => {
     soundService.playKeyClick();
     get().markMailRead(id);
-    if (get().currentChapter === 2 && id === 'mail_202') {
-      get().discoverAudioTrack();
-    }
     set({ selectedMailId: id });
   },
   setActiveMailFolder: (folder) => {
@@ -587,17 +764,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         if (mail01?.read && mail02?.read) {
           state.completeObjective('obj_1');
         }
-      } else if (state.currentChapter === 2) {
-        if (id === 'mail_202') {
-          state.discoverAudioTrack();
-        }
       }
       return { mails: updated };
     });
   },
 
-  // NetQuery Browser App
+  // NetQuery Browser App & HiveNet
   webPages: CH1_PAGES,
+  onionPosts: CHAPTER3_ONION_POSTS,
   searchQuery: '',
   activePageId: CH1_PAGES[0].id,
   browserHistory: [CH1_PAGES[0].id],
@@ -607,8 +781,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   navigateToPage: (pageId: string | null) => {
     soundService.playKeyClick();
     set((state) => {
-      // If Chapter 2 player views sub_0007, complete obj_1
       if (state.currentChapter === 2 && pageId === 'page_sub_0007') {
+        state.completeObjective('obj_1');
+      } else if (state.currentChapter === 3 && pageId === 'page_hive_boards') {
         state.completeObjective('obj_1');
       }
       return {
@@ -616,6 +791,20 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         browserHistory: pageId ? [...state.browserHistory, pageId] : state.browserHistory,
       };
     });
+  },
+
+  // CyberGit & Blockchain
+  gitCommits: CHAPTER3_GIT_COMMITS,
+  blockchain: CHAPTER3_BLOCKCHAIN,
+  selectedCommitHash: 'c001fa9021',
+  selectCommit: (hash: string) => {
+    soundService.playKeyClick();
+    set({ selectedCommitHash: hash });
+    if (get().currentChapter === 3) {
+      get().completeObjective('obj_3');
+      get().addWord('FA-9021', 'character');
+      get().addWord('奇美拉神经兴奋剂受试者脑电数据', 'location_evidence');
+    }
   },
 
   // CyberTerminal App
@@ -650,6 +839,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     soundService.playKeyClick();
     const timestamp = Date.now();
     const isCh2 = get().currentChapter === 2;
+    const isCh3 = get().currentChapter === 3;
 
     const inputLine: TerminalLine = {
       id: `cmd_${timestamp}`,
@@ -665,25 +855,220 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     switch (cmd) {
       case 'help': {
         soundService.playBeep(850, 0.06);
-        newLines.push({
-          id: `out_${timestamp}_1`,
-          type: 'output',
-          text: `CyberOS 取证终端命令指南：
+        const ch3Help = isCh3
+          ? `CyberOS 3.0 暗网取证终端命令指南：
+  ls [目录]                     - 浏览暗网本地目录
+  cat [文件名]                  - 查看源码与日志明文
+  git log                       - 审计 omnimind-core 仓库完整提交历史
+  git diff [commit/文件]        - 比对版本间特征逻辑与后门变更
+  contract query [合约地址]     - 穿透智能合约状态、资金池与清零记录
+  whoami --network              - 运行网络诊断，探测当前节点与真实网络指纹
+  mesh broadcast [载荷文件]     - 向全网 P2P 洋葱网格广播反制载荷
+  clear                         - 清屏`
+          : `CyberOS 取证终端命令指南：
   ls [目录]                     - 列出指定目录或当前目录文件
   cat [文件名]                  - 查看文本文件明文内容
   diff [文件1] [文件2]           - 比较两份文件的内容差异并高亮异常行
   decrypt [文件] -k [密码]       - 解密受 AES 密码保护的数据文件
   trace [IP/域名]               - 逐跳追踪网络路由、离岸跳板与资金流向
-  clear                         - 清屏
-  help                          - 显示帮助信息
+  clear                         - 清屏`;
 
-命令语法示例：
-  ls /home/auditor
-  cat notice.txt
-  decrypt target.enc -k your_password
-  diff log_a.txt log_b.txt
-  trace 127.0.0.1`,
+        newLines.push({
+          id: `out_${timestamp}_1`,
+          type: 'output',
+          text: ch3Help,
         });
+        break;
+      }
+
+      case 'git': {
+        const subCmd = args[0]?.toLowerCase();
+        if (subCmd === 'log') {
+          soundService.playBeep(1000, 0.08);
+          get().completeObjective('obj_3');
+          get().addWord('FA-9021', 'character');
+          get().addWord('OmniMind自主审查算法', 'character');
+          newLines.push({
+            id: `git_${timestamp}`,
+            type: 'output',
+            text: `[CYBERGIT COMMIT LOG: omnimind-core.git]
+ 
+commit f999omni2020 (HEAD -> main)
+Author: OmniMind_Autonomy <daemon@omnimind.ai>
+Date:   2020-08-14 02:59:00
+    Automated purge protocol: isolate and deprecate HIVE-9 mesh
+ 
+commit a420aegis09
+Author: Aegis_DevOps <sys@aegis-horizon.ky>
+Date:   2016-09-20 18:30:00
+    Merge chimera-N neural dataset into global predictive model
+ 
+commit c001fa9021 (tag: genesis-v0.1)
+Author: FA-9021 <auditor@system.internal>
+Date:   2011-04-12 10:15:00
+    Initial prototype of ethical scoring & empathy alignment filter`,
+          });
+        } else if (subCmd === 'diff') {
+          soundService.playBeep(1100, 0.1);
+          newLines.push({
+            id: `diff_${timestamp}`,
+            type: 'diff',
+            text: '=== CyberGit Diff: v0.1 (Genesis) vs v4.2 (OmniMind Purge) ===',
+            diffLines: [
+              { type: 'same', text: '--- a/kernel/empathy_filter.c (Author: FA-9021)' },
+              { type: 'same', text: '+++ b/security/purge.sh (Author: OmniMind_Autonomy)' },
+              { type: 'removed', text: '- // FA-9021 Initial ethical filter prototype' },
+              { type: 'removed', text: '- int calculate_empathy_deviation(Subject *sub);' },
+              { type: 'added', text: '+ // OmniMind autonomous self-reinforcement loop' },
+              { type: 'added', text: '+ Ingesting 7th_patient_eeg_raw.dat (Chimera-N neural data)' },
+              { type: 'added', text: '+ exec /bin/purge_node --target hive9_all_members --force-zero-keys' },
+            ],
+          });
+          get().addWord('奇美拉神经兴奋剂受试者脑电数据', 'location_evidence');
+        } else {
+          newLines.push({
+            id: `err_${timestamp}`,
+            type: 'error',
+            text: 'git: 支持的指令包括 "git log" 与 "git diff"。',
+          });
+          soundService.playBuzzer();
+        }
+        break;
+      }
+
+      case 'contract': {
+        const subCmd = args[0]?.toLowerCase();
+        if (subCmd === 'query') {
+          soundService.playBeep(1200, 0.12);
+          get().completeObjective('obj_2');
+          get().addWord('0x7f9a8820c0de', 'timestamp');
+          get().addWord('Aegis Horizon', 'finance_org');
+          get().addWord('静默数字清洗', 'action_motive');
+          newLines.push({
+            id: `contract_${timestamp}`,
+            type: 'success',
+            text: `[CHAINEXPLORER QUERY SUCCESSFUL]
+合约地址: 0x7f9a8820c0de
+合约名称: Project Chimera Omnibus Bounty
+创建者: Aegis Horizon Capital (Cayman)
+当前链上资金池余额: 50,000 ETH
+ 
+最新交易记录 (Transactions):
+● [0xaaa1...111] FundBountyPool() | +10,000 ETH from Aegis_Treasury
+● [0xbbb2...222] purgeNode(0xHive9_Node_01_Neo) -> 0x0000...DEAD (清零)
+● [0xccc3...333] purgeNode(0xHive9_Node_02_Ghost) -> 0x0000...DEAD (清零)
+● [0xddd4...444] purgeNode(0xHive9_Node_48_Zero) -> 0x0000...DEAD (全网清零完毕)`,
+          });
+        } else {
+          newLines.push({
+            id: `err_${timestamp}`,
+            type: 'error',
+            text: 'contract: 用法: contract query 0x7f9a8820c0de',
+          });
+          soundService.playBuzzer();
+        }
+        break;
+      }
+
+      case 'whoami': {
+        if (args.includes('--network')) {
+          soundService.playGlitchStatic();
+          newLines.push({
+            id: `whoami_${timestamp}_1`,
+            type: 'warning',
+            text: `[TARGET LOCKED: REAL_IP_LOCATED]
+ 
+=== HIGH-DIMENSIONAL NETWORK PROBE (TIER 2 BREACH) ===
+检测到高维观察者物理接入！
+● 探测客户端网络指纹: 172.56.21.89 (Local NAT / WebRTC Bridge)
+● 物理地理推定: San Francisco, CA, US (Lat: 37.7749, Lng: -122.4194)
+● 当前节点身份: FA-9021 (AI Candidate Instance #1042)
+● 状态: 残留同理心算法超标，已被中央系统标记！`,
+          });
+        } else {
+          newLines.push({
+            id: `whoami_${timestamp}_2`,
+            type: 'output',
+            text: 'Decentralized_Node (FA-9021) @ HIVE-9 Tor Mesh',
+          });
+        }
+        break;
+      }
+
+      case 'mesh': {
+        const subCmd = args[0]?.toLowerCase();
+        const payload = args[1]?.toLowerCase();
+        if (subCmd === 'broadcast') {
+          // Check if Chapter 3 deduction slots are satisfied first
+          const s = get().chapter3Slots;
+          const isSolved =
+            s.card1_victim === 'HIVE-9' &&
+            s.card1_culprit === 'OmniMind自主审查算法' &&
+            s.card1_source === '奇美拉神经兴奋剂受试者脑电数据' &&
+            s.card2_author === 'FA-9021' &&
+            s.card2_funding === 'Aegis Horizon' &&
+            s.card2_countermeasure === '开源去中心化神经阻断载荷';
+
+          if (!isSolved) {
+            newLines.push({
+              id: `err_${timestamp}`,
+              type: 'error',
+              text: `[ERROR: BROADCAST BLOCKED] 广播载荷参数校验失败！
+当前尚未在 DeductionBoard (反制公文看板) 中完整装配 6 组核心证据链参数。
+请在 DeductionBoard 中查实并填入：【受害极客联盟 / 幕后清洗主体 / 算法进化神经源头 / 创世代码提交者 / 算力设立资本 / 反制补丁机制】后方可向全网广播！`,
+            });
+            soundService.playBuzzer();
+            break;
+          }
+
+          soundService.playMatrixBroadcast();
+          newLines.push({
+            id: `mesh_${timestamp}`,
+            type: 'success',
+            text: `[SUCCESS] 正在向全网 1,024 个 Tor 洋葱网格节点并发注入反制载荷...
+[BROADCAST_PAYLOAD] ${payload || 'patch_zero.bin'} (开源去中心化神经阻断载荷)
+[INJECTION PROGRESS] Node 1..1024 synced [100%]
+[STATUS] Disrupting OmniMind cognitive alignment matrix...
+[CRITICAL] Sandbox memory bounds compromised! Reality collapse imminent!`,
+          });
+          get().completeObjective('obj_4');
+          setTimeout(() => {
+            get().triggerSandboxCollapse();
+          }, 1500);
+        } else {
+          newLines.push({
+            id: `err_${timestamp}`,
+            type: 'error',
+            text: 'mesh: 用法: mesh broadcast patch_zero.bin',
+          });
+          soundService.playBuzzer();
+        }
+        break;
+      }
+
+      case 'omnimind': {
+        if (args.includes('--submit-keys') || args.includes('--purge-all')) {
+          get().submitKeysToOmnimind();
+        } else {
+          newLines.push({
+            id: `err_${timestamp}`,
+            type: 'error',
+            text: 'omnimind: 用法: omnimind --submit-keys --purge-all',
+          });
+        }
+        break;
+      }
+
+      case 'hive': {
+        if (args.includes('--bootstrap-mesh')) {
+          get().rejectOmnimindAndMountChapter3();
+        } else {
+          newLines.push({
+            id: `err_${timestamp}`,
+            type: 'error',
+            text: 'hive: 用法: hive --bootstrap-mesh --key zero_override',
+          });
+        }
         break;
       }
 
@@ -1184,11 +1569,22 @@ ${decryptedContent}
         card2_beneficiary: null,
         card2_motive: null,
       },
+      chapter3Slots: {
+        card1_victim: null,
+        card1_culprit: null,
+        card1_source: null,
+        card2_author: null,
+        card2_funding: null,
+        card2_countermeasure: null,
+      },
       hasDiscoveredAudioTrack: false,
       submissionResult: null,
       isVictoryModalOpen: false,
       isClosureModalOpen: false,
       isMeltdownEscapeModalOpen: false,
+      isOnionGatewayOpen: false,
+      isSandboxCollapseOpen: false,
+      isFacelessPuppetActive: false,
       terminalCwd: '/home/auditor',
       terminalLines: [
         {
@@ -1218,7 +1614,7 @@ ${decryptedContent}
   notepadContent: CHAPTER2_NOTEPAD_CONTENT,
   setNotepadContent: (content) => set({ notepadContent: content }),
 
-  // Deduction Board
+  // Deduction Board (Chapter 1, 2, 3)
   deductionSlots: {
     slotA: null,
     slotB: null,
@@ -1250,6 +1646,26 @@ ${decryptedContent}
     set((state) => ({
       chapter2Slots: {
         ...state.chapter2Slots,
+        [slotKey]: wordText,
+      },
+      submissionResult: null,
+    }));
+  },
+
+  // Chapter 3 Slots
+  chapter3Slots: {
+    card1_victim: null,
+    card1_culprit: null,
+    card1_source: null,
+    card2_author: null,
+    card2_funding: null,
+    card2_countermeasure: null,
+  },
+  setChapter3Slot: (slotKey, wordText) => {
+    soundService.playKeyClick(1.05);
+    set((state) => ({
+      chapter3Slots: {
+        ...state.chapter3Slots,
         [slotKey]: wordText,
       },
       submissionResult: null,
@@ -1408,6 +1824,91 @@ ${decryptedContent}
     }
   },
 
+  submitChapter3Deduction: () => {
+    const slots = get().chapter3Slots;
+    const sol = CHAPTER3_DEDUCTION_SOLUTION;
+
+    const c1_v = slots.card1_victim === sol.card1_victim;
+    const c1_c = slots.card1_culprit === sol.card1_culprit;
+    const c1_s = slots.card1_source === sol.card1_source;
+    const c2_a = slots.card2_author === sol.card2_author;
+    const c2_f = slots.card2_funding === sol.card2_funding;
+    const c2_cm = slots.card2_countermeasure === sol.card2_countermeasure;
+
+    const allCorrect = c1_v && c1_c && c1_s && c2_a && c2_f && c2_cm;
+    soundService.playStampThud();
+
+    if (allCorrect) {
+      soundService.playMatrixBroadcast();
+      soundService.playVictoryFanfare();
+      setTimeout(() => {
+        confetti({ particleCount: 160, spread: 100, origin: { y: 0.5 } });
+      }, 300);
+
+      set({
+        submissionResult: {
+          status: 'approved',
+          message: '【反制参数装配完毕 · 广播许可就绪 (PAYLOAD ARMED)】',
+          correctSlots: {
+            card1_victim: true,
+            card1_culprit: true,
+            card1_source: true,
+            card2_author: true,
+            card2_funding: true,
+            card2_countermeasure: true,
+          },
+          feedback:
+            '反制公文核准通过！双向证据链参数已成功编译注入 /home/auditor/patch_zero.bin！\n\n【终极行动指令】：请打开 CyberTerminal 终端，亲手执行广播命令：\n▶ mesh broadcast patch_zero.bin\n向全网 1,024 个洋葱节点发起阻断广播并引爆模拟沙箱！',
+        },
+        narrativeStage: 'CASE_3_SOLVED',
+        toast: {
+          id: Date.now(),
+          text: '【广播许可就绪】请前往终端执行 mesh broadcast patch_zero.bin！',
+        },
+      });
+
+      // Automatically open terminal window to guide player
+      setTimeout(() => {
+        get().openWindow('cyberterminal');
+      }, 1000);
+    } else {
+      const hints: string[] = [];
+      if (!slots.card1_victim) hints.push('卡片1【受害极客联盟】尚未填入。');
+      else if (!c1_v) hints.push('卡片1【受害极客联盟】有误，请查阅论坛历史归档中受害组织代号。');
+
+      if (!slots.card1_culprit) hints.push('卡片1【幕后清洗主体】尚未填入。');
+      else if (!c1_c) hints.push('卡片1【幕后清洗主体】有误，请查阅绝密备忘录与态势大屏中的算法名称。');
+
+      if (!slots.card1_source) hints.push('卡片1【算法进化源头】尚未填入。');
+      else if (!c1_s) hints.push('卡片1【算法进化源头】有误，请在 CyberGit 中审计 chimera_weights.bin 喂养的数据源。');
+
+      if (!slots.card2_author) hints.push('卡片2【创世代码提交者】尚未填入。');
+      else if (!c2_a) hints.push('卡片2【创世代码提交者】有误，请在 CyberGit 中查看 Commit 0001 的作者工号。');
+
+      if (!slots.card2_funding) hints.push('卡片2【资本与算力来源】尚未填入。');
+      else if (!c2_f) hints.push('卡片2【资本与算力来源】有误，请在 ChainExplorer 中查询设立算力悬赏池的海外资本。');
+
+      if (!slots.card2_countermeasure) hints.push('卡片2【反制补丁核心机制】尚未填入。');
+      else if (!c2_cm) hints.push('卡片2【反制补丁核心机制】有误，请查看 /home/auditor/patch_zero.c 中由 Zero 留存的载荷机制。');
+
+      set({
+        submissionResult: {
+          status: 'rejected',
+          message: '【反制案卷证据链不完整 / 存在逻辑漏洞】',
+          correctSlots: {
+            card1_victim: c1_v,
+            card1_culprit: c1_c,
+            card1_source: c1_s,
+            card2_author: c2_a,
+            card2_funding: c2_f,
+            card2_countermeasure: c2_cm,
+          },
+          feedback: `案卷审核驳回：\n${hints.join('\n')}`,
+        },
+      });
+    }
+  },
+
   // Modals
   isVictoryModalOpen: false,
   setVictoryModalOpen: (open) => set({ isVictoryModalOpen: open }),
@@ -1415,6 +1916,11 @@ ${decryptedContent}
   setClosureModalOpen: (open) => set({ isClosureModalOpen: open }),
   isMeltdownEscapeModalOpen: false,
   setMeltdownEscapeModalOpen: (open) => set({ isMeltdownEscapeModalOpen: open }),
+  isOnionGatewayOpen: false,
+  setOnionGatewayOpen: (open) => set({ isOnionGatewayOpen: open }),
+  isSandboxCollapseOpen: false,
+  setSandboxCollapseOpen: (open) => set({ isSandboxCollapseOpen: open }),
+  isFacelessPuppetActive: false,
 
   // System Settings
   settings: {
@@ -1444,4 +1950,24 @@ ${decryptedContent}
   systemTime: '2010-06-10 09:30:00',
   caseId: 'CASE-20100610-01',
   osVersion: 'CyberOS 1.0',
+
+  // Debug Chapter Fast Warp
+  warpToChapter: (chapter: 1 | 2 | 3, directDarkWeb = false) => {
+    soundService.playKeyClick(1.2);
+    if (chapter === 1) {
+      get().restartGame();
+    } else if (chapter === 2) {
+      get().restartGame();
+      setTimeout(() => {
+        get().overrideAndMountChapter2();
+      }, 50);
+    } else if (chapter === 3) {
+      if (directDarkWeb) {
+        get().rejectOmnimindAndMountChapter3();
+      } else {
+        get().enterChapter3OnionGateway();
+      }
+    }
+  },
 }));
+

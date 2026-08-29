@@ -1,0 +1,17 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' width='256' height='256'>
+  <defs>
+    <radialGradient id='nightLight' cx='50%' cy='30%' r='60%'>
+      <stop offset='0%' stop-color='#2a3342'/>
+      <stop offset='60%' stop-color='#0f141c'/>
+      <stop offset='100%' stop-color='#05070a'/>
+    </radialGradient>
+  </defs>
+  <rect width='256' height='256' fill='url(#nightLight)'/>
+  <path d='M20,10 L30,40 M80,20 L90,60 M140,5 L150,45 M200,30 L210,70 M50,120 L60,160 M170,110 L180,150 M110,180 L120,220' stroke='#4a5d73' stroke-width='1.2' opacity='0.35'/>
+  <circle cx='190' cy='60' r='18' fill='#d4af37' opacity='0.15'/>
+  <circle cx='190' cy='60' r='6' fill='#fff5cc' opacity='0.4'/>
+  <path d='M128,80 C110,80 102,95 102,115 C102,130 112,142 128,142 C144,142 154,130 154,115 C154,95 146,80 128,80 Z' fill='#080b10'/>
+  <path d='M85,256 L95,175 C95,155 110,140 128,140 C146,140 161,155 161,175 L171,256 Z' fill='#0a0e14'/>
+  <path d='M108,145 L128,170 L148,145 L138,138 L118,138 Z' fill='#05070a'/>
+  <rect x='122' y='108' width='12' height='2.5' rx='1' fill='#4ade80' opacity='0.75'/>
+</svg>

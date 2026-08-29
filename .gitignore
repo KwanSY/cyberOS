@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch & Temporary Tools
+scratch/
+.system_generated/
+.gemini/
+
+# Readme excluded per user request
+README*
+readme*
+

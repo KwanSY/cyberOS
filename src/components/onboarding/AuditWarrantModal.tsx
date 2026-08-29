@@ -56,13 +56,13 @@ export const AuditWarrantModal: React.FC = () => {
           <div className="space-y-2 text-xs text-slate-700 font-sans">
             <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-red-800" />
-              审计任务执行阶段指南：
+              审计任务核心授权范围：
             </div>
             <ul className="list-disc list-inside space-y-1 pl-1 font-mono text-slate-800">
-              <li>阶段 1：检视工作站残留邮件与草稿，破译备忘密码。</li>
-              <li>阶段 2：检索内网档案，在终端中解密林默遗留日志 (diary.enc)。</li>
-              <li>阶段 3：交叉比对门禁出勤、监控录像与服务器脱机备份日志 (diff)。</li>
-              <li>阶段 4：在定罪看板中完成终审公文填空定罪并予以归档。</li>
+              <li>1. 调阅林默工作站遗留通信记录与涉案关联人档案；</li>
+              <li>2. 提取并破译涉案被加密之关键证据链；</li>
+              <li>3. 交叉审计物理门禁、网络日志与人事变动之异常矛盾；</li>
+              <li>4. 重建事实闭环并在审计看板上签发正式定罪公文。</li>
             </ul>
           </div>
 

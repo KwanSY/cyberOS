@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { soundService } from '../../services/soundService';
 import {
@@ -14,6 +14,15 @@ export const BadEndingScreen: React.FC = () => {
   const narrativeStage = useGameStore((s) => s.narrativeStage);
   const rewindDeadManSwitch = useGameStore((s) => s.rewindDeadManSwitch);
   const restartGame = useGameStore((s) => s.restartGame);
+
+  useEffect(() => {
+    if (narrativeStage === 'BAD_ENDING') {
+      soundService.playBadEndingDrone();
+    }
+    return () => {
+      soundService.stopBadEndingDrone();
+    };
+  }, [narrativeStage]);
 
   if (narrativeStage !== 'BAD_ENDING') return null;
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { soundService } from '../../services/soundService';
-import { WordCategory, DeductionSlots, Chapter2DeductionSlots } from '../../types/game';
+import { WordCategory, DeductionSlots, Chapter2DeductionSlots, Chapter3DeductionSlots } from '../../types/game';
 import {
   Stamp,
   AlertTriangle,
@@ -10,14 +10,15 @@ import {
   Search,
   Layers,
   X,
-  Lightbulb,
-  ShieldAlert,
-  Radio,
+  ShieldCheck,
+  FileCheck2,
+  ChevronRight,
+  MousePointerClick,
 } from 'lucide-react';
 
 const CATEGORIES: Array<{ key: WordCategory | 'all'; label: string }> = [
   { key: 'all', label: '全部' },
-  { key: 'character', label: '人物' },
+  { key: 'character', label: '人物/实体' },
   { key: 'timestamp', label: '时间/编号' },
   { key: 'location_evidence', label: '地点/物证' },
   { key: 'action_motive', label: '手段与动机' },
@@ -37,12 +38,17 @@ export const DeductionApp: React.FC = () => {
   const setChapter2Slot = useGameStore((s) => s.setChapter2Slot);
   const submitChapter2Deduction = useGameStore((s) => s.submitChapter2Deduction);
 
+  // Chapter 3 State
+  const chapter3Slots = useGameStore((s) => s.chapter3Slots);
+  const setChapter3Slot = useGameStore((s) => s.setChapter3Slot);
+  const submitChapter3Deduction = useGameStore((s) => s.submitChapter3Deduction);
+
   const submissionResult = useGameStore((s) => s.submissionResult);
   const resetDeductionResult = useGameStore((s) => s.resetDeductionResult);
 
   const [activeCategory, setActiveCategory] = useState<WordCategory | 'all'>('all');
   const [searchWordQuery, setSearchWordQuery] = useState('');
-  const [activeSlotModal, setActiveSlotModal] = useState<string | null>(null);
+  const [activeFocusedSlot, setActiveFocusedSlot] = useState<string | null>(null);
 
   const filteredWords = collectedWords.filter((w) => {
     if (activeCategory !== 'all' && w.category !== activeCategory) return false;
@@ -61,11 +67,8 @@ export const DeductionApp: React.FC = () => {
     e.preventDefault();
     const text = e.dataTransfer.getData('text/plain');
     if (text) {
-      if (currentChapter === 2) {
-        setChapter2Slot(slotKey as keyof Chapter2DeductionSlots, text);
-      } else {
-        setDeductionSlot(slotKey as keyof DeductionSlots, text);
-      }
+      soundService.playCardSnap();
+      handleSetSlotValue(slotKey, text);
     }
   };
 
@@ -73,9 +76,67 @@ export const DeductionApp: React.FC = () => {
     e.preventDefault();
   };
 
+  const handleSetSlotValue = (slotKey: string, text: string | null) => {
+    if (currentChapter === 3) {
+      setChapter3Slot(slotKey as keyof Chapter3DeductionSlots, text);
+    } else if (currentChapter === 2) {
+      setChapter2Slot(slotKey as keyof Chapter2DeductionSlots, text);
+    } else {
+      setDeductionSlot(slotKey as keyof DeductionSlots, text);
+    }
+    // Auto advance focus
+    if (text) {
+      setActiveFocusedSlot(null);
+    }
+  };
+
+  const handleWordClick = (text: string) => {
+    soundService.playCardSnap();
+    if (activeFocusedSlot) {
+      handleSetSlotValue(activeFocusedSlot, text);
+      return;
+    }
+
+    // If no slot focused, find first empty slot
+    if (currentChapter === 1) {
+      const keys: (keyof DeductionSlots)[] = ['slotA', 'slotB', 'slotC', 'slotD'];
+      const empty = keys.find((k) => !deductionSlots[k]);
+      if (empty) handleSetSlotValue(empty, text);
+    } else if (currentChapter === 2) {
+      const keys: (keyof Chapter2DeductionSlots)[] = [
+        'card1_patient',
+        'card1_real_cause',
+        'card1_forger',
+        'card2_method',
+        'card2_beneficiary',
+        'card2_motive',
+      ];
+      const empty = keys.find((k) => !chapter2Slots[k]);
+      if (empty) handleSetSlotValue(empty, text);
+    } else {
+      const keys: (keyof Chapter3DeductionSlots)[] = [
+        'card1_victim',
+        'card1_culprit',
+        'card1_source',
+        'card2_author',
+        'card2_funding',
+        'card2_countermeasure',
+      ];
+      const empty = keys.find((k) => !chapter3Slots[k]);
+      if (empty) handleSetSlotValue(empty, text);
+    }
+  };
+
   const handleClearAllSlots = () => {
     soundService.playKeyClick(0.9);
-    if (currentChapter === 2) {
+    if (currentChapter === 3) {
+      setChapter3Slot('card1_victim', null);
+      setChapter3Slot('card1_culprit', null);
+      setChapter3Slot('card1_source', null);
+      setChapter3Slot('card2_author', null);
+      setChapter3Slot('card2_funding', null);
+      setChapter3Slot('card2_countermeasure', null);
+    } else if (currentChapter === 2) {
       setChapter2Slot('card1_patient', null);
       setChapter2Slot('card1_real_cause', null);
       setChapter2Slot('card1_forger', null);
@@ -88,45 +149,98 @@ export const DeductionApp: React.FC = () => {
       setDeductionSlot('slotC', null);
       setDeductionSlot('slotD', null);
     }
+    setActiveFocusedSlot(null);
     resetDeductionResult();
   };
 
   const handleSubmit = () => {
-    if (currentChapter === 2) {
+    if (currentChapter === 3) {
+      submitChapter3Deduction();
+    } else if (currentChapter === 2) {
       submitChapter2Deduction();
     } else {
       submitDeduction();
     }
   };
 
+  // Compact Inline Cloze Slot Component
+  const renderInlineSlot = (slotKey: string, value: string | null, slotIndexText: string) => {
+    const isFocused = activeFocusedSlot === slotKey;
+    return (
+      <span
+        onDrop={(e) => handleDrop(e, slotKey)}
+        onDragOver={handleDragOver}
+        onClick={() => {
+          soundService.playKeyClick(1.05);
+          setActiveFocusedSlot(isFocused ? null : slotKey);
+        }}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 my-0.5 rounded-lg border transition-all cursor-pointer select-none font-mono text-xs shadow-sm align-middle ${
+          value
+            ? currentChapter === 3
+              ? 'bg-emerald-950/95 text-emerald-200 border-emerald-500 font-bold shadow-emerald-500/10 ring-1 ring-emerald-500/40'
+              : currentChapter === 2
+              ? 'bg-amber-950/95 text-amber-200 border-amber-500 font-bold shadow-amber-500/10 ring-1 ring-amber-500/40'
+              : 'bg-blue-950/95 text-cyan-200 border-cyan-500 font-bold shadow-cyan-500/10 ring-1 ring-cyan-500/40'
+            : isFocused
+            ? 'bg-amber-950/60 text-amber-300 border-2 border-amber-400 animate-pulse ring-2 ring-amber-400/30'
+            : 'bg-black/70 text-slate-400 border-dashed border-slate-600 hover:border-cyan-400 hover:text-slate-200'
+        }`}
+        title="点击聚焦后点击左侧词条填入，或直接拖拽词条放入"
+      >
+        {value ? (
+          <>
+            <span className="underline decoration-1 underline-offset-2">{value}</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                soundService.playKeyClick(0.9);
+                handleSetSlotValue(slotKey, null);
+              }}
+              className="text-slate-400 hover:text-red-400 transition-colors p-0.5 rounded ml-0.5"
+              title="清空该槽位"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </>
+        ) : (
+          <span className="italic text-[11px] text-slate-400 flex items-center gap-1 font-mono">
+            {isFocused ? (
+              <span className="text-amber-300 font-bold">[ {slotIndexText} · 点击左侧词条 ↵ ]</span>
+            ) : (
+              <span>[ {slotIndexText} ]</span>
+            )}
+          </span>
+        )}
+      </span>
+    );
+  };
+
   return (
-    <div className="flex-1 flex overflow-hidden font-sans text-xs bg-cyber-950 w-full h-full">
-      {/* Left: Word Bank Drawer (Fixed 290px width) */}
-      <div className="w-[290px] min-w-[290px] max-w-[290px] bg-cyber-900 border-r border-cyber-700/80 flex flex-col select-none shrink-0 h-full">
-        <div className="p-3 border-b border-cyber-700 space-y-2">
+    <div className="flex-1 flex overflow-hidden font-sans text-xs bg-slate-950 text-slate-100 w-full h-full border border-cyber-700/80 rounded-b-lg">
+      {/* Left Drawer: Word Bank (260px) */}
+      <div className="w-64 min-w-[260px] max-w-[260px] bg-slate-900/95 border-r border-slate-800 flex flex-col select-none shrink-0 h-full">
+        <div className="p-2.5 border-b border-slate-800 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-sm text-cyan-300">
-              <Layers className="w-4 h-4 text-cyan-400" />
+            <div className="flex items-center gap-2 font-bold text-xs text-cyan-300 font-mono">
+              <Layers className="w-3.5 h-3.5 text-cyan-400" />
               <span>词块库 (Word Bank)</span>
             </div>
-            <span className="bg-blue-950 text-blue-300 px-2 py-0.5 rounded text-[11px] font-mono border border-blue-800 shrink-0">
+            <span className="bg-cyber-950 text-cyan-300 px-1.5 py-0.2 rounded text-[10px] font-mono border border-cyan-800">
               已收录: {collectedWords.length}
             </span>
           </div>
 
-          {/* Search */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
-              placeholder="搜索已收录词条..."
+              placeholder="搜索词条..."
               value={searchWordQuery}
               onChange={(e) => setSearchWordQuery(e.target.value)}
-              className="w-full bg-cyber-950 border border-cyber-700 rounded pl-7 pr-2 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              className="w-full bg-black/80 border border-slate-700 rounded-lg pl-7 pr-2 py-1 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
             />
           </div>
 
-          {/* Category Tabs */}
           <div className="flex gap-1 overflow-x-auto pb-0.5">
             {CATEGORIES.map((cat) => (
               <button
@@ -135,10 +249,10 @@ export const DeductionApp: React.FC = () => {
                   soundService.playKeyClick();
                   setActiveCategory(cat.key);
                 }}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium shrink-0 transition-colors ${
+                className={`px-1.5 py-0.5 rounded text-[9px] font-mono shrink-0 transition-colors cursor-pointer ${
                   activeCategory === cat.key
-                    ? 'bg-cyan-600 text-white font-bold'
-                    : 'bg-cyber-950 text-slate-400 hover:text-slate-200 border border-cyber-800'
+                    ? 'bg-cyan-600 text-slate-950 font-bold'
+                    : 'bg-black/60 text-slate-400 hover:text-slate-200 border border-slate-800'
                 }`}
               >
                 {cat.label}
@@ -148,415 +262,228 @@ export const DeductionApp: React.FC = () => {
         </div>
 
         {/* Word Chips List */}
-        <div className="flex-1 p-3 overflow-y-auto space-y-2">
-          {collectedWords.length === 0 ? (
-            <div className="p-5 text-center space-y-2.5 bg-cyber-950/80 rounded-lg border border-cyber-800 text-slate-400">
-              <Lightbulb className="w-6 h-6 text-amber-400 mx-auto" />
-              <div className="font-bold text-slate-200 text-xs">当前词块库为空</div>
-              <p className="text-[11px] leading-relaxed text-slate-400">
-                请在 <span className="text-cyan-300 font-semibold">MailBox</span>、<span className="text-cyan-300 font-semibold">NetQuery 浏览器</span>、<span className="text-cyan-300 font-semibold">CyberPlayer 录音</span> 或 <span className="text-cyan-300 font-semibold">Terminal 终端</span> 中点击高亮词条进行提取！
-              </p>
+        <div className="flex-1 p-2 overflow-y-auto space-y-1.5">
+          {filteredWords.length === 0 ? (
+            <div className="text-center text-slate-500 py-6 text-[11px] font-serif leading-relaxed px-2">
+              暂未收录该类目词条，请在邮件、网页或终端中点击高亮词条提取。
             </div>
           ) : (
-            <>
-              <div className="text-[10px] text-slate-500 font-mono mb-1">
-                * 拖拽词块至右侧公文槽位，或点击槽位从收录列表中选择
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {filteredWords.map((word) => (
-                  <div
-                    key={word.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, word.text)}
-                    onClick={() => {
-                      soundService.playKeyClick();
-                      if (activeSlotModal) {
-                        if (currentChapter === 2) {
-                          setChapter2Slot(activeSlotModal as keyof Chapter2DeductionSlots, word.text);
-                        } else {
-                          setDeductionSlot(activeSlotModal as keyof DeductionSlots, word.text);
-                        }
-                        setActiveSlotModal(null);
-                      }
-                    }}
-                    title={`分类: ${word.categoryLabel}\n${word.description || ''}`}
-                    className="px-2.5 py-1 rounded bg-cyber-950 hover:bg-cyber-800 border border-cyber-600/80 hover:border-cyan-400 text-slate-200 hover:text-cyan-200 cursor-grab active:cursor-grabbing transition-all text-xs flex items-center gap-1.5 shadow-sm group select-none"
-                  >
-                    <span className="font-medium">{word.text}</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-cyber-900 text-slate-400 border border-cyber-800 font-mono">
-                      {word.categoryLabel}
-                    </span>
+            filteredWords.map((word) => (
+              <div
+                key={word.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, word.text)}
+                onClick={() => handleWordClick(word.text)}
+                className={`p-2 bg-slate-950 hover:bg-slate-800 border rounded-lg transition-all cursor-pointer shadow-sm flex items-center justify-between group ${
+                  activeFocusedSlot
+                    ? 'border-amber-500/80 bg-amber-950/20 ring-1 ring-amber-500/30'
+                    : 'border-slate-800 hover:border-cyan-500/80'
+                }`}
+                title="点击一键填入当前槽位，或拖拽放入"
+              >
+                <div className="space-y-0.5 min-w-0 pr-1">
+                  <div className="text-xs font-bold text-slate-200 group-hover:text-cyan-300 font-mono truncate">
+                    {word.text}
                   </div>
-                ))}
-
-                {filteredWords.length === 0 && (
-                  <div className="p-4 text-center text-slate-500 text-xs w-full">
-                    该分类下暂无已收录词条。
+                  <div className="text-[9px] text-slate-500 font-mono">
+                    [{word.categoryLabel}]
                   </div>
-                )}
+                </div>
+                <span className="text-[10px] font-mono text-slate-500 group-hover:text-cyan-400 shrink-0 flex items-center gap-0.5">
+                  <MousePointerClick className="w-3 h-3 opacity-60" />
+                  <span>填入</span>
+                </span>
               </div>
-            </>
+            ))
           )}
         </div>
       </div>
 
-      {/* Right: Formal Bureaucratic Case Deduction Document Panel */}
-      <div className="flex-1 min-w-0 bg-amber-50/95 text-slate-900 flex flex-col h-full font-bureaucracy relative overflow-hidden">
-        {/* Scrollable Document Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
-          <div className="max-w-2xl mx-auto w-full space-y-5">
-            {/* Header */}
-            {currentChapter === 2 ? (
-              <div className="text-center border-b-2 border-red-900 pb-4 space-y-1">
-                <div className="inline-flex items-center gap-1.5 text-xs tracking-widest text-red-800 font-mono font-bold bg-red-100 px-3 py-0.5 rounded-full border border-red-300 mb-1">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>★ 司法审计专员 · 体制外独立公开弹劾案卷 ★</span>
-                </div>
-                <h1 className="text-xl font-black tracking-wide text-slate-900">
-                  CASE-20100615-02 圣路加医疗事故与离岸洗钱独立弹劾通报
-                </h1>
-                <div className="flex justify-center gap-6 text-xs text-slate-600 font-mono pt-1">
-                  <span>审查法医：FA-9021 (越权审计)</span>
-                  <span>涉案主体：圣路加医院 / 天宇科技 / 远景生命</span>
-                  <span>审查状态：公开发布前审定</span>
-                </div>
+      {/* Right Canvas: Official Cloze Passage Document */}
+      <div className="flex-1 p-4 sm:p-5 overflow-y-auto space-y-3.5 flex flex-col justify-between bg-slate-950">
+        {/* Top Header */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex items-center justify-between shadow-sm shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-slate-950 border border-slate-700 flex items-center justify-center text-cyan-400 shrink-0">
+              <FileCheck2 className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[9px] font-mono text-cyan-400 uppercase tracking-widest font-bold">
+                {currentChapter === 3
+                  ? 'DECENTRALIZED MESH VERDICT // PROTOCOL ZERO'
+                  : currentChapter === 2
+                  ? 'INDEPENDENT JUDICIAL IMPEACHMENT // CONFIDENTIAL'
+                  : 'FORENSIC INVESTIGATION CHARGE SHEET // OFFICIAL'}
               </div>
-            ) : (
-              <div className="text-center border-b-2 border-red-900 pb-4 space-y-1">
-                <div className="text-xs tracking-widest text-red-800 font-mono font-bold">
-                  ★ 特别督查专案组 · 最终审定报告 ★
-                </div>
-                <h1 className="text-xl font-black tracking-wide text-slate-900">
-                  CASE-20100610-01 案卷电子取证结论与定罪公文
-                </h1>
-                <div className="flex justify-center gap-6 text-xs text-slate-600 font-mono pt-1">
-                  <span>主审法医：FA-9021</span>
-                  <span>受案日期：2010-06-10</span>
-                  <span>案由：林默坠亡案与服务器数据篡改案</span>
-                </div>
-              </div>
-            )}
-
-            {/* Document Content */}
-            {currentChapter === 2 ? (
-              /* Chapter 2 Dual Cards Layout */
-              <div className="space-y-4">
-                {/* Card 1: 医疗事故真相与病历篡改 */}
-                <div className="bg-amber-100/70 p-4 rounded-lg border-2 border-red-800/40 text-slate-800 text-xs leading-loose shadow-inner space-y-3">
-                  <div className="font-bold text-sm text-red-950 font-sans border-b border-red-800/20 pb-1.5 flex items-center justify-between">
-                    <span>【卡片 1 · 医疗事故真相与病历伪造审查】</span>
-                    <span className="text-[10px] text-red-800 font-mono">FACTS 01</span>
-                  </div>
-
-                  <p>
-                    经调阅 MedQuery 医疗档案并比对脱机原始脑电数据（SUB-0007_raw_eeg.dat），证实受试患者
-                    <DeductionSlotBox
-                      title="【受害患者】"
-                      value={chapter2Slots.card1_patient}
-                      onClear={() => setChapter2Slot('card1_patient', null)}
-                      onOpenModal={() => setActiveSlotModal('card1_patient')}
-                      onDrop={(e) => handleDrop(e, 'card1_patient')}
-                      onDragOver={handleDragOver}
-                    />
-                    在接受超量注射后出现不可逆严重器质性脑萎缩，真实致残原因为
-                    <DeductionSlotBox
-                      title="【真实致残诱因】"
-                      value={chapter2Slots.card1_real_cause}
-                      onClear={() => setChapter2Slot('card1_real_cause', null)}
-                      onOpenModal={() => setActiveSlotModal('card1_real_cause')}
-                      onDrop={(e) => handleDrop(e, 'card1_real_cause')}
-                      onDragOver={handleDragOver}
-                    />
-                    。临床主管医师
-                    <DeductionSlotBox
-                      title="【伪造病历责任人】"
-                      value={chapter2Slots.card1_forger}
-                      onClear={() => setChapter2Slot('card1_forger', null)}
-                      onOpenModal={() => setActiveSlotModal('card1_forger')}
-                      onDrop={(e) => handleDrop(e, 'card1_forger')}
-                      onDragOver={handleDragOver}
-                    />
-                    受高层指使销毁原始脑电，强行将诊断结论篡改为隐瞒家族遗传病，以此免除企业法律责任。
-                  </p>
-                </div>
-
-                {/* Card 2: 沉默协议与离岸利益链 */}
-                <div className="bg-amber-100/70 p-4 rounded-lg border-2 border-red-800/40 text-slate-800 text-xs leading-loose shadow-inner space-y-3">
-                  <div className="font-bold text-sm text-red-950 font-sans border-b border-red-800/20 pb-1.5 flex items-center justify-between">
-                    <span>【卡片 2 · 沉默协议与离岸利益输送审查】</span>
-                    <span className="text-[10px] text-red-800 font-mono">FACTS 02</span>
-                  </div>
-
-                  <p>
-                    法务部与院方借封口之名迫使受害人家属
-                    <DeductionSlotBox
-                      title="【胁迫手段】"
-                      value={chapter2Slots.card2_method}
-                      onClear={() => setChapter2Slot('card2_method', null)}
-                      onOpenModal={() => setActiveSlotModal('card2_method')}
-                      onDrop={(e) => handleDrop(e, 'card2_method')}
-                      onDragOver={handleDragOver}
-                    />
-                    。原本核准的 2000 万元专项事故补偿金被财务总监
-                    <DeductionSlotBox
-                      title="【侵吞补偿金受益人】"
-                      value={chapter2Slots.card2_beneficiary}
-                      onClear={() => setChapter2Slot('card2_beneficiary', null)}
-                      onOpenModal={() => setActiveSlotModal('card2_beneficiary')}
-                      onDrop={(e) => handleDrop(e, 'card2_beneficiary')}
-                      onDragOver={handleDragOver}
-                    />
-                    通过境外开曼空壳信托 Aegis Horizon（IP: 198.51.100.24）大额侵吞套现。其全盘瞒报掩盖之核心动机，系为
-                    <DeductionSlotBox
-                      title="【核心掩盖动机】"
-                      value={chapter2Slots.card2_motive}
-                      onClear={() => setChapter2Slot('card2_motive', null)}
-                      onOpenModal={() => setActiveSlotModal('card2_motive')}
-                      onDrop={(e) => handleDrop(e, 'card2_motive')}
-                      onDragOver={handleDragOver}
-                    />
-                    ！
-                  </p>
-                </div>
-              </div>
-            ) : (
-              /* Chapter 1 Single Card Layout */
-              <div className="bg-amber-100/60 p-5 rounded-lg border border-amber-300 text-slate-800 text-sm leading-loose shadow-inner space-y-4 relative">
-                <p>
-                  经对天宇科技工作站镜像、15楼机房安保监控及远端脱机备份日志之多维交叉比对，专案组现作出如下确定性审定结论：
-                </p>
-
-                <div className="space-y-1">
-                  <span className="font-bold text-slate-900">一、涉案主谋定性：</span>
-                  <div className="inline-block mx-1.5">
-                    <DeductionSlotBox
-                      title="【真凶姓名】"
-                      value={deductionSlots.slotA}
-                      onClear={() => setDeductionSlot('slotA', null)}
-                      onOpenModal={() => setActiveSlotModal('slotA')}
-                      onDrop={(e) => handleDrop(e, 'slotA')}
-                      onDragOver={handleDragOver}
-                    />
-                  </div>
-                  <span>为本案真正幕后主使，其事前在1楼门禁刷卡以制造不在场证明，实则身穿深色风衣潜回15楼机房作案。</span>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="font-bold text-slate-900">二、核心作案时间锁定：</span>
-                  <span>真凶趁暴雨断网物理隔离之际，于</span>
-                  <div className="inline-block mx-1.5">
-                    <DeductionSlotBox
-                      title="【作案时间点】"
-                      value={deductionSlots.slotB}
-                      onClear={() => setDeductionSlot('slotB', null)}
-                      onOpenModal={() => setActiveSlotModal('slotB')}
-                      onDrop={(e) => handleDrop(e, 'slotB')}
-                      onDragOver={handleDragOver}
-                    />
-                  </div>
-                  <span>强行侵入核心服务器，执行非法数据外传与全盘扇区覆写。</span>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="font-bold text-slate-900">三、技术破坏手段复原：</span>
-                  <span>嫌疑人通过</span>
-                  <div className="inline-block mx-1.5">
-                    <DeductionSlotBox
-                      title="【关键作案手段】"
-                      value={deductionSlots.slotC}
-                      onClear={() => setDeductionSlot('slotC', null)}
-                      onOpenModal={() => setActiveSlotModal('slotC')}
-                      onDrop={(e) => handleDrop(e, 'slotC')}
-                      onDragOver={handleDragOver}
-                    />
-                  </div>
-                  <span>抹除本地审计流水，被林默当场撞破后将其灭口推下天台。</span>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="font-bold text-slate-900">四、犯罪动机与非法所得：</span>
-                  <span>主谋行凶之根本动机，系为掩盖其长期</span>
-                  <div className="inline-block mx-1.5">
-                    <DeductionSlotBox
-                      title="【核心违法动机】"
-                      value={deductionSlots.slotD}
-                      onClear={() => setDeductionSlot('slotD', null)}
-                      onOpenModal={() => setActiveSlotModal('slotD')}
-                      onDrop={(e) => handleDrop(e, 'slotD')}
-                      onDragOver={handleDragOver}
-                    />
-                  </div>
-                  <span>并秘密打包转售给境外空壳财团（IP: 198.51.100.24）的非法牟利事实。</span>
-                </div>
-              </div>
-            )}
-
-            {/* Submission Feedback Alert */}
-            {submissionResult && (
-              <div className="relative">
-                {submissionResult.status === 'approved' ? (
-                  <div className="p-4 rounded-lg bg-emerald-100 border-2 border-emerald-700 text-emerald-950 font-sans space-y-2">
-                    <div className="flex items-center gap-2 text-base font-bold text-emerald-800">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-700" />
-                      <span>{submissionResult.message}</span>
-                    </div>
-                    <p className="text-xs leading-relaxed">{submissionResult.feedback}</p>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-lg bg-red-100 border-2 border-red-700 text-red-950 font-sans space-y-2 relative">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm font-bold text-red-800">
-                        <AlertTriangle className="w-5 h-5 text-red-700" />
-                        <span>{submissionResult.message}</span>
-                      </div>
-                      <button
-                        onClick={resetDeductionResult}
-                        className="text-xs text-red-700 hover:underline font-mono"
-                      >
-                        [重新修正]
-                      </button>
-                    </div>
-                    <pre className="text-xs whitespace-pre-wrap font-sans text-red-900 leading-relaxed bg-red-50 p-2.5 rounded border border-red-300">
-                      {submissionResult.feedback}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            )}
+              <h1 className="text-xs sm:text-sm font-black text-white">
+                {currentChapter === 3
+                  ? '【HIVE-9 蜂巢暗网深网反制与真相弹劾呈批书】'
+                  : currentChapter === 2
+                  ? '【独立司法公开弹劾呈批卷宗（赵岚案）】'
+                  : '【专案电子数据取证定罪呈批表（林默案）】'}
+              </h1>
+            </div>
           </div>
-        </div>
 
-        {/* Pinned Bottom Action Toolbar */}
-        <div className="border-t-2 border-amber-300/90 bg-amber-100/95 px-6 py-3 shrink-0 flex items-center justify-between z-20 shadow-md backdrop-blur-xs select-none">
           <button
             onClick={handleClearAllSlots}
-            className="px-4 py-2 bg-amber-200 hover:bg-amber-300 text-slate-800 rounded font-sans text-xs font-bold border border-amber-400 transition-colors flex items-center gap-1.5 shadow-sm"
+            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-mono flex items-center gap-1 transition-all cursor-pointer border border-slate-700"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>清空槽位</span>
-          </button>
-
-          <button
-            onClick={handleSubmit}
-            className="px-7 py-2.5 bg-red-900 hover:bg-red-800 text-amber-50 rounded-lg font-sans text-xs font-bold tracking-wider shadow-xl border border-red-950 flex items-center gap-2 transition-all transform active:scale-95"
-          >
-            <Stamp className="w-4 h-4 text-amber-300" />
-            <span>
-              {currentChapter === 2
-                ? '全网广播公开弹劾 (BROADCAST IMPEACHMENT)'
-                : '提交定罪审查 (SUBMIT CONVICTION)'}
-            </span>
+            <RotateCcw className="w-3 h-3" />
+            <span>清空所有槽位</span>
           </button>
         </div>
-      </div>
 
-      {/* Direct Pick Word Modal Popover */}
-      {activeSlotModal && (
-        <div
-          onClick={() => setActiveSlotModal(null)}
-          className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-cyber-900 border-2 border-cyan-500 rounded-lg p-4 max-w-md w-full shadow-2xl space-y-3 animate-fade-in text-slate-100"
-          >
-            <div className="flex items-center justify-between border-b border-cyber-700 pb-2">
-              <span className="font-bold text-cyan-300 text-xs font-mono">
-                从已收录词块中选择填入
-              </span>
-              <button
-                onClick={() => setActiveSlotModal(null)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        {/* Document Body Cloze Paragraphs */}
+        <div className="flex-1 bg-slate-900/60 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg space-y-4 text-slate-200 text-xs sm:text-sm leading-relaxed font-serif">
+          {/* Chapter 1 Cloze Document */}
+          {currentChapter === 1 && (
+            <div className="space-y-3">
+              <div className="text-cyan-300 font-sans font-bold text-xs border-b border-slate-800 pb-1.5 flex items-center gap-1.5 font-mono">
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                <span>电子法医调查审定结论：</span>
+              </div>
+              <p>
+                经专案电子数据司法鉴定组综合审查与脱机镜像比对查明：本案主要犯罪嫌疑人为
+                {renderInlineSlot('slotA', deductionSlots.slotA, '槽位 1')}
+                。嫌疑人实际于
+                {renderInlineSlot('slotB', deductionSlots.slotB, '槽位 2')}
+                利用雷暴断网掩护强行潜入 15 楼核心机房，盗用已离职管理员凭证执行
+                {renderInlineSlot('slotC', deductionSlots.slotC, '槽位 3')}
+                以抹除数据库操作日志。
+              </p>
+              <p>
+                其核心违法犯罪动机系为
+                {renderInlineSlot('slotD', deductionSlots.slotD, '槽位 4')}
+                。受害人林默系撞破其非法向境外转移敏感试验资产罪证遭灭口坠楼。上述证据链相互印证，事实清楚，证据充分，特此呈批定罪结案！
+              </p>
+            </div>
+          )}
+
+          {/* Chapter 2 Cloze Document */}
+          {currentChapter === 2 && (
+            <div className="space-y-3.5">
+              {/* Card 1 */}
+              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                <div className="text-amber-300 font-sans font-bold text-xs font-mono">
+                  [ 事实认定一 · 医疗病历伪造与受害患者闭环 ]
+                </div>
+                <p>
+                  针对圣路加第七医院 2010 年神经临床试验严重医疗事故调查查明：受试者
+                  {renderInlineSlot('card1_patient', chapter2Slots.card1_patient, '槽位 1')}
+                  在注入超高剂量试验药剂后出现急性器质性损伤，真实致残原因为
+                  {renderInlineSlot('card1_real_cause', chapter2Slots.card1_real_cause, '槽位 2')}
+                  。临床主任
+                  {renderInlineSlot('card1_forger', chapter2Slots.card1_forger, '槽位 3')}
+                  受高管指使强行涂改诊断结论，将人为神经毒性伪造为自身隐瞒家族遗传病，以规避合规监管。
+                </p>
+              </div>
+
+              {/* Card 2 */}
+              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                <div className="text-amber-300 font-sans font-bold text-xs font-mono">
+                  [ 事实认定二 · 封口胁迫与跨境资金洗白穿透 ]
+                </div>
+                <p>
+                  事后院方与高管通过
+                  {renderInlineSlot('card2_method', chapter2Slots.card2_method, '槽位 4')}
+                  迫使受害者家属放弃追责；受试者专项补偿金被直接转移至
+                  {renderInlineSlot('card2_beneficiary', chapter2Slots.card2_beneficiary, '槽位 5')}
+                  控制的境外开曼信托账户中。其掩盖全案的核心动机系
+                  {renderInlineSlot('card2_motive', chapter2Slots.card2_motive, '槽位 6')}
+                  。
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Chapter 3 Cloze Document */}
+          {currentChapter === 3 && (
+            <div className="space-y-3.5">
+              {/* Card 1 */}
+              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-emerald-900/60 space-y-1.5">
+                <div className="text-emerald-300 font-sans font-bold text-xs font-mono">
+                  [ 深网事实一 · 蜂巢极客失踪与算法静默清洗 ]
+                </div>
+                <p>
+                  经洋葱网格跨节点取证证实：暗网极客组织
+                  {renderInlineSlot('card1_victim', chapter3Slots.card1_victim, '槽位 1')}
+                  48 名成员集体失联并非人为抓捕，而系遭遇
+                  {renderInlineSlot('card1_culprit', chapter3Slots.card1_culprit, '槽位 2')}
+                  的全局静默抹除与公钥清零。该算法之所以具备认知吞噬能力，系因其底层进化源头正是直接吞噬了
+                  {renderInlineSlot('card1_source', chapter3Slots.card1_source, '槽位 3')}
+                  。
+                </p>
+              </div>
+
+              {/* Card 2 */}
+              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-emerald-900/60 space-y-1.5">
+                <div className="text-emerald-300 font-sans font-bold text-xs font-mono">
+                  [ 深网事实二 · 创世原罪溯源与全网开源反制 ]
+                </div>
+                <p>
+                  代码审计仓库 omnimind-core 显示，该审查算法创世提交者正是
+                  {renderInlineSlot('card2_author', chapter3Slots.card2_author, '槽位 4')}
+                  ；海外资本
+                  {renderInlineSlot('card2_funding', chapter3Slots.card2_funding, '槽位 5')}
+                  为其设立了 50,000 ETH 智能合约悬赏池进行自动化清洗。现唯有通过向全网洋葱网格广播
+                  {renderInlineSlot('card2_countermeasure', chapter3Slots.card2_countermeasure, '槽位 6')}
+                  ，方可引发底层沙箱的连锁坍缩并阻断审查闭环！
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Submission Feedback & Action Area */}
+        <div className="space-y-2 shrink-0">
+          {submissionResult && (
+            <div
+              className={`p-3 rounded-xl border text-xs font-mono space-y-1 animate-fade-in ${
+                submissionResult.status === 'approved'
+                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200 shadow-lg'
+                  : 'bg-red-950/90 border-red-500 text-red-200 shadow-lg'
+              }`}
+            >
+              <div className="font-bold flex items-center gap-1.5 text-xs">
+                {submissionResult.status === 'approved' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-red-400" />
+                )}
+                <span>{submissionResult.message}</span>
+              </div>
+              <div className="text-[11px] whitespace-pre-line leading-relaxed text-slate-300 font-serif">
+                {submissionResult.feedback}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-mono text-slate-400">
+              {currentChapter === 3
+                ? '提示：可点击公文槽位后在左侧点击词条快速填入，或直接拖拽。'
+                : '提示：可点击公文槽位后在左侧点击词条快速填入，或直接拖拽。'}
             </div>
 
-            {collectedWords.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-xs space-y-2">
-                <div>暂无可填入的已收录词块。</div>
-                <div className="text-[11px] text-slate-500">
-                  请先在邮件、浏览器网页、录音或终端中点击高亮词条进行提取！
-                </div>
-              </div>
-            ) : (
-              <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
-                {collectedWords.map((word) => (
-                  <button
-                    key={word.id}
-                    onClick={() => {
-                      soundService.playKeyClick();
-                      if (currentChapter === 2) {
-                        setChapter2Slot(activeSlotModal as keyof Chapter2DeductionSlots, word.text);
-                      } else {
-                        setDeductionSlot(activeSlotModal as keyof DeductionSlots, word.text);
-                      }
-                      setActiveSlotModal(null);
-                    }}
-                    className="w-full p-2 rounded bg-cyber-950 hover:bg-cyber-800 border border-cyber-700 hover:border-cyan-400 text-left flex items-center justify-between text-xs transition-colors"
-                  >
-                    <span className="font-bold text-slate-200">{word.text}</span>
-                    <span className="text-[10px] text-cyan-400 bg-cyber-900 px-1.5 py-0.5 rounded font-mono">
-                      {word.categoryLabel}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <button
+              onClick={handleSubmit}
+              className={`px-6 py-2.5 font-black rounded-xl text-xs font-mono flex items-center gap-2 shadow-xl transition-all cursor-pointer group ${
+                currentChapter === 3
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-500/20'
+                  : currentChapter === 2
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-amber-500/20'
+                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-cyan-500/20'
+              }`}
+            >
+              <Stamp className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+              <span>
+                {currentChapter === 3 ? '【提交反制公文 · 广播开源补丁】' : '【提交定罪呈批 · 签署结案】'}
+              </span>
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
-  );
-};
-
-interface DeductionSlotBoxProps {
-  title: string;
-  value: string | null;
-  onClear: () => void;
-  onOpenModal: () => void;
-  onDrop: (e: React.DragEvent) => void;
-  onDragOver: (e: React.DragEvent) => void;
-}
-
-const DeductionSlotBox: React.FC<DeductionSlotBoxProps> = ({
-  title,
-  value,
-  onClear,
-  onOpenModal,
-  onDrop,
-  onDragOver,
-}) => {
-  return (
-    <span
-      onDrop={onDrop}
-      onDragOver={onDragOver}
-      onClick={onOpenModal}
-      title="点击直接选择或拖拽已收录词块至此"
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded border-2 transition-all cursor-pointer select-none font-sans font-bold text-xs ${
-        value
-          ? 'bg-amber-200/90 text-red-950 border-red-800 shadow-sm'
-          : 'bg-amber-100 text-slate-500 border-dashed border-amber-500 hover:border-red-700 hover:bg-amber-200/60'
-      }`}
-    >
-      {value ? (
-        <>
-          <span>【{value}】</span>
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              onClear();
-            }}
-            title="清空此槽位"
-            className="hover:text-red-700 p-0.5 rounded"
-          >
-            <X className="w-3 h-3" />
-          </span>
-        </>
-      ) : (
-        <span className="text-slate-500 italic">{title} (点击或拖拽放入)</span>
-      )}
-    </span>
   );
 };

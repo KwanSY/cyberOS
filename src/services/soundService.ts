@@ -459,7 +459,125 @@ class SoundService {
     });
   }
 
-  // 14. Realtime Voicemail Tape Playback Voice Synthesizer
+  // 14. Bad Ending Somber Ominous Drone & Tragedy Music System
+  private badEndingNodes: Array<{ osc?: OscillatorNode; node?: AudioNode; gain: GainNode; timerId?: number }> = [];
+
+  public playBadEndingDrone() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    this.stopBadEndingDrone();
+
+    const now = ctx.currentTime;
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.001, now);
+    masterGain.gain.linearRampToValueAtTime(0.4, now + 2.0); // Enhanced volume
+    masterGain.connect(ctx.destination);
+    this.badEndingNodes.push({ node: masterGain, gain: masterGain });
+
+    // Layer 1: Deep D-Minor Sub & Harmonic Bed (55Hz, 73.42Hz, 110Hz, 146.83Hz)
+    const frequencies = [55.0, 73.42, 110.0, 146.83];
+    frequencies.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = idx === 0 ? 'sawtooth' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.linearRampToValueAtTime(freq * (1 + (idx % 2 === 0 ? 0.003 : -0.003)), now + 12.0);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(idx === 0 ? 140 : 420, now);
+      filter.frequency.linearRampToValueAtTime(idx === 0 ? 95 : 300, now + 10.0);
+      filter.Q.setValueAtTime(2.5, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(idx === 0 ? 0.25 : 0.16, now + 2.0);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(now);
+      this.badEndingNodes.push({ osc, gain });
+    });
+
+    // Layer 2: Cold Wind Hollow Noise (Atmospheric desolation)
+    const bufferSize = ctx.sampleRate * 3;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = (Math.random() * 2 - 1) * 0.4;
+    }
+
+    const whiteNoise = ctx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(480, now);
+    noiseFilter.frequency.linearRampToValueAtTime(750, now + 6);
+    noiseFilter.frequency.linearRampToValueAtTime(360, now + 14);
+    noiseFilter.Q.setValueAtTime(4.0, now);
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.001, now);
+    noiseGain.gain.linearRampToValueAtTime(0.18, now + 3.0);
+
+    whiteNoise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(masterGain);
+
+    whiteNoise.start(now);
+    this.badEndingNodes.push({ node: whiteNoise, gain: noiseGain });
+
+    // Layer 3: Sparse Sad Bell / Piano Solitary Drops (D4 -> F4 -> A4 -> C5 -> D4)
+    const sadNotes = [293.66, 349.23, 440.0, 523.25, 440.0, 349.23, 293.66];
+    sadNotes.forEach((pitch, i) => {
+      const dropTime = now + 1.2 + i * 2.6; // One sad note every 2.6s
+      const noteOsc = ctx.createOscillator();
+      const noteGain = ctx.createGain();
+      const noteFilter = ctx.createBiquadFilter();
+
+      noteOsc.type = 'sine';
+      noteOsc.frequency.setValueAtTime(pitch, dropTime);
+      noteOsc.frequency.exponentialRampToValueAtTime(pitch * 0.99, dropTime + 2.2);
+
+      noteFilter.type = 'lowpass';
+      noteFilter.frequency.setValueAtTime(1200, dropTime);
+
+      noteGain.gain.setValueAtTime(0.001, dropTime);
+      noteGain.gain.linearRampToValueAtTime(0.24, dropTime + 0.05);
+      noteGain.gain.exponentialRampToValueAtTime(0.001, dropTime + 2.4);
+
+      noteOsc.connect(noteFilter);
+      noteFilter.connect(noteGain);
+      noteGain.connect(masterGain);
+
+      noteOsc.start(dropTime);
+      noteOsc.stop(dropTime + 2.5);
+      this.badEndingNodes.push({ osc: noteOsc, gain: noteGain });
+    });
+  }
+
+  public stopBadEndingDrone() {
+    if (this.badEndingNodes.length > 0) {
+      this.badEndingNodes.forEach(({ osc, node, gain }) => {
+        try {
+          if (this.ctx) {
+            gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.8);
+          }
+          if (osc) osc.stop(this.ctx ? this.ctx.currentTime + 0.85 : 0);
+          if (node && 'stop' in node) (node as AudioScheduledSourceNode).stop();
+        } catch (_) {}
+      });
+      this.badEndingNodes = [];
+    }
+  }
+
+  // 15. Realtime Voicemail Tape Playback Voice Synthesizer
   private cachedVoices: SpeechSynthesisVoice[] = [];
 
   constructor() {
@@ -608,8 +726,174 @@ class SoundService {
       window.speechSynthesis.cancel();
     }
   }
+
+  // 16. Glass Shatter & High-Frequency Glitch Synthesis (Chapter 3 Sandbox Collapse)
+  public playGlassShatter() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+
+    // A. Explosive high crack noise burst
+    const bufferSize = ctx.sampleRate * 0.8;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08));
+    }
+
+    const whiteNoise = ctx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+
+    const highFilter = ctx.createBiquadFilter();
+    highFilter.type = 'highpass';
+    highFilter.frequency.setValueAtTime(3200, now);
+    highFilter.frequency.exponentialRampToValueAtTime(800, now + 0.6);
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.5, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+    whiteNoise.connect(highFilter);
+    highFilter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    whiteNoise.start(now);
+
+    // B. Multiple resonant shards tinkle frequencies
+    const shardFreqs = [2400, 3100, 4200, 5600, 6800, 8200];
+    shardFreqs.forEach((f, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f * (0.95 + Math.random() * 0.1), now + idx * 0.04);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.4, now + idx * 0.04 + 0.5);
+
+      gain.gain.setValueAtTime(0.12, now + idx * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.5);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + idx * 0.04);
+      osc.stop(now + idx * 0.04 + 0.55);
+    });
+
+    // C. Piercing low resonance collapse drone
+    const lowOsc = ctx.createOscillator();
+    const lowGain = ctx.createGain();
+    lowOsc.type = 'sawtooth';
+    lowOsc.frequency.setValueAtTime(140, now);
+    lowOsc.frequency.exponentialRampToValueAtTime(28, now + 1.2);
+    lowGain.gain.setValueAtTime(0.35, now);
+    lowGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+    lowOsc.connect(lowGain);
+    lowGain.connect(ctx.destination);
+    lowOsc.start(now);
+    lowOsc.stop(now + 1.25);
+  }
+
+  // 17. Tor Onion Proxy 3-Hop Routing Beep
+  public playTorHopBeep(hop: number = 1) {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    const baseFreq = 700 + hop * 280;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.06);
+
+    gain.gain.setValueAtTime(0.09, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.07);
+  }
+
+  // 18. Emerald Matrix Mesh Broadcast Sound
+  public playMatrixBroadcast() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const chords = [523.25, 659.25, 783.99, 1046.5, 1318.51]; // C major high sparkle
+    chords.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.25, now + idx * 0.08 + 0.4);
+
+      gain.gain.setValueAtTime(0.14, now + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.45);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + idx * 0.08);
+      osc.stop(now + idx * 0.08 + 0.48);
+    });
+  }
+
+  // 19. Glitch Static Noise Burst (Real IP alert / Tier 2 meta break)
+  public playGlitchStatic() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(940, now);
+    osc.frequency.linearRampToValueAtTime(220, now + 0.15);
+    osc.frequency.linearRampToValueAtTime(1200, now + 0.3);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1400, now);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.35);
+  }
+
+  // 20. Typewriter Tick
+  public playTypewriterTick() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(1600 + Math.random() * 400, now);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.02);
+  }
 }
 
 export const soundService = new SoundService();
+
 
 

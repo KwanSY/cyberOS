@@ -31,6 +31,18 @@ const CH2_QUICK_COMMANDS = [
   { label: 'help', cmd: 'help', autoRun: true },
 ];
 
+const CH3_QUICK_COMMANDS = [
+  { label: 'ls', cmd: 'ls', autoRun: true },
+  { label: 'cat [文件]', cmd: 'cat ', autoRun: false },
+  { label: 'git log', cmd: 'git log', autoRun: true },
+  { label: 'git diff', cmd: 'git diff', autoRun: true },
+  { label: 'contract query [合约地址]', cmd: 'contract query ', autoRun: false },
+  { label: 'whoami --network', cmd: 'whoami --network', autoRun: true },
+  { label: 'mesh broadcast [载荷文件]', cmd: 'mesh broadcast ', autoRun: false },
+  { label: 'clear', cmd: 'clear', autoRun: true },
+  { label: 'help', cmd: 'help', autoRun: true },
+];
+
 export const TerminalApp: React.FC = () => {
   const currentChapter = useGameStore((s) => s.currentChapter);
   const terminalLines = useGameStore((s) => s.terminalLines);
@@ -48,7 +60,12 @@ export const TerminalApp: React.FC = () => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const quickCommands = currentChapter === 2 ? CH2_QUICK_COMMANDS : CH1_QUICK_COMMANDS;
+  const quickCommands =
+    currentChapter === 3
+      ? CH3_QUICK_COMMANDS
+      : currentChapter === 2
+      ? CH2_QUICK_COMMANDS
+      : CH1_QUICK_COMMANDS;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -271,6 +288,13 @@ export const TerminalApp: React.FC = () => {
             {line.type === 'error' && (
               <div className="text-red-400 bg-red-950/30 p-2 rounded border border-red-900/60 font-semibold" style={{ userSelect: 'text' }}>
                 {line.text}
+              </div>
+            )}
+
+            {line.type === 'warning' && (
+              <div className="text-amber-300 bg-red-950/50 p-3 rounded-lg border-2 border-red-600 font-bold space-y-1 animate-pulse" style={{ userSelect: 'text' }}>
+                <div className="text-red-400 text-[10px] uppercase font-mono">⚠️ SYSTEM THREAT & INTRUSION ALERT</div>
+                <div className="whitespace-pre-wrap">{line.text}</div>
               </div>
             )}
 

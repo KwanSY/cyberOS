@@ -11,18 +11,29 @@ import {
   Trash2,
   Info,
   Shield,
+  GitBranch,
+  Coins,
+  AudioWaveform,
+  FileText,
 } from 'lucide-react';
 
 const APPS_LIST: Array<{ id: AppId; name: string; icon: React.ElementType; desc: string }> = [
   { id: 'mailbox', name: 'MailBox (邮件系统)', icon: Mail, desc: '检视涉案人往来邮件与本地草稿' },
+  { id: 'hivenet', name: 'HiveNet (洋葱暗网浏览器)', icon: Globe, desc: '3-Hop 洋葱路由访问蜂巢极客论坛' },
+  { id: 'cybergit', name: 'CyberGit (代码审计器)', icon: GitBranch, desc: 'OmniMind 仓库提交树与 Blame 溯源' },
+  { id: 'chainexplorer', name: 'ChainExplorer (链上账本)', icon: Coins, desc: '以太坊智能合约与 50,000 ETH 悬赏穿透' },
   { id: 'netquery', name: 'NetQuery (档案浏览器)', icon: Globe, desc: '检索内网通报与互联网归档' },
   { id: 'cyberterminal', name: 'CyberTerminal (终端)', icon: Terminal, desc: '命令行取证、日志比对与解密' },
   { id: 'deduction', name: 'DeductionBoard (定罪看板)', icon: FileCheck2, desc: '完形填空公文定罪终审系统' },
+  { id: 'cyberplayer', name: 'CyberPlayer (声纹播放器)', icon: AudioWaveform, desc: '现场偷录录音与声纹频谱分析' },
+  { id: 'notepad', name: 'Notepad (记事便签)', icon: FileText, desc: '审计员私人调查便签' },
   { id: 'trash', name: 'Trash (回收站)', icon: Trash2, desc: '查看被删除的数据碎片' },
   { id: 'systeminfo', name: 'SystemInfo (系统信息)', icon: Info, desc: '取证工作站配置与案卷信息' },
 ];
 
 export const Taskbar: React.FC = () => {
+  const currentChapter = useGameStore((s) => s.currentChapter);
+  const osVersion = useGameStore((s) => s.osVersion);
   const windows = useGameStore((s) => s.windows);
   const maxZIndex = useGameStore((s) => s.maxZIndex);
   const openWindow = useGameStore((s) => s.openWindow);
@@ -31,6 +42,17 @@ export const Taskbar: React.FC = () => {
   const systemTime = useGameStore((s) => s.systemTime);
 
   const [startMenuOpen, setStartMenuOpen] = useState(false);
+
+  const availableApps = APPS_LIST.filter((app) => {
+    if (currentChapter === 3) {
+      return ['hivenet', 'cybergit', 'chainexplorer', 'cyberterminal', 'deduction', 'notepad', 'trash', 'systeminfo'].includes(app.id);
+    }
+    if (currentChapter === 2) {
+      return ['mailbox', 'netquery', 'cyberterminal', 'deduction', 'notepad', 'cyberplayer', 'trash', 'systeminfo'].includes(app.id);
+    }
+    // Chapter 1
+    return ['mailbox', 'netquery', 'cyberterminal', 'deduction', 'notepad', 'trash', 'systeminfo'].includes(app.id);
+  });
 
   const handleStartToggle = () => {
     soundService.playKeyClick(1.2);
@@ -68,23 +90,25 @@ export const Taskbar: React.FC = () => {
           <div className="bg-gradient-to-r from-blue-900 to-cyan-900 p-3 rounded text-white flex items-center gap-2.5 border border-cyan-500/40">
             <Shield className="w-6 h-6 text-cyan-300" />
             <div>
-              <div className="font-bold text-sm">CyberOS 1.0</div>
-              <div className="text-[11px] text-cyan-200 font-mono">法医取证终端 · FA-9021</div>
+              <div className="font-bold text-sm">{osVersion}</div>
+              <div className="text-[11px] text-cyan-200 font-mono">
+                {currentChapter === 3 ? '洋葱暗网节点 · HIVE-9' : currentChapter === 2 ? '越权追查镜像 · FA-9021' : '法医取证终端 · FA-9021'}
+              </div>
             </div>
           </div>
 
           <div className="text-[11px] font-bold text-slate-400 px-2 pt-1 font-mono">
-            FORENSIC APPLICATIONS
+            {currentChapter === 3 ? 'HIVE-9 MESH APPLICATIONS' : 'FORENSIC APPLICATIONS'}
           </div>
 
           <div className="space-y-1">
-            {APPS_LIST.map((app) => {
+            {availableApps.map((app) => {
               const Icon = app.icon;
               return (
                 <button
                   key={app.id}
                   onClick={() => handleAppLaunch(app.id)}
-                  className="w-full p-2 rounded flex items-center gap-3 hover:bg-cyber-700/70 text-left transition-colors group"
+                  className="w-full p-2 rounded flex items-center gap-3 hover:bg-cyber-700/70 text-left transition-colors group cursor-pointer"
                 >
                   <div className="w-8 h-8 rounded bg-cyber-950 flex items-center justify-center border border-cyber-600 group-hover:border-cyan-400">
                     <Icon className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />

@@ -25,28 +25,31 @@ export const MeltdownEscapeModal: React.FC = () => {
       return;
     }
 
-    // 1. Broadcast phase (0s - 3s)
+    // 1. Broadcast phase (0s - 3.5s): Announcement sound
+    soundService.playBroadcastAlert();
+
+    // 2. Meltdown phase (3.5s - 7.5s): When red breach warning appears, start siren
     const t1 = setTimeout(() => {
       setPhase('meltdown');
       soundService.playMeltdownAlarm();
     }, 3500);
 
-    // 2. Meltdown & Reality Door Knocking phase (3.5s - 7s)
+    // 3. Reality Door Knocking phase (4.8s): Tactical squad knocking
     const t2 = setTimeout(() => {
       soundService.playSpatialDoorKnock();
-    }, 4500);
+    }, 4800);
 
-    // 3. Zero Onion Proxy Injection (7s - 10s)
+    // 4. Zero Onion Proxy Injection (8s - 11s)
     const t3 = setTimeout(() => {
       setPhase('escape');
       soundService.playBeep(1400, 0.2);
-    }, 7500);
+    }, 8000);
 
-    // 4. Chapter 3 Unlock Card (10s+)
+    // 5. Chapter 3 Unlock Card (11.5s+)
     const t4 = setTimeout(() => {
       setPhase('chapter3_card');
       soundService.playVictoryFanfare();
-    }, 10500);
+    }, 11500);
 
     return () => {
       clearTimeout(t1);
@@ -104,11 +107,12 @@ export const MeltdownEscapeModal: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-black/90 p-4 rounded-lg border border-red-700 text-left font-mono text-xs space-y-1.5 text-red-300">
-            <div>[AEGIS_COUNTERMEASURE] Remote execution injected by 198.51.100.24</div>
-            <div>[ALERT] Physical door security breached! Tactical squad inbound!</div>
-            <div className="text-amber-300 font-bold animate-ping">
-              &gt;&gt;&gt; 耳机空间音频：急促重靴跑动声与特勤暴力砸门声！ &lt;&lt;&lt;
+          <div className="bg-black/95 p-4 rounded-xl border-2 border-red-500 text-left font-mono text-xs space-y-2.5 shadow-2xl">
+            <div className="text-red-400 font-bold">[AEGIS_COUNTERMEASURE] Remote execution injected by 198.51.100.24</div>
+            <div className="text-red-300 font-bold">[ALERT] Physical door security breached! Tactical squad inbound!</div>
+            <div className="bg-red-950 p-3 rounded-lg border-2 border-amber-500 text-amber-200 font-black text-xs sm:text-sm flex items-center gap-2.5 shadow-lg">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 animate-bounce" />
+              <span>【真实物理警报】门外传来急促特勤重靴跑动声与剧烈暴力砸门声！</span>
             </div>
           </div>
         </div>
@@ -200,18 +204,21 @@ export const MeltdownEscapeModal: React.FC = () => {
                 soundService.playVictoryFanfare();
                 confetti({ particleCount: 100, spread: 80 });
               }}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-bold transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>庆祝全案告破</span>
+              <span>庆祝第二章告破</span>
             </button>
 
             <button
-              onClick={() => setMeltdownEscapeModalOpen(false)}
-              className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black rounded-lg text-xs transition-all shadow-lg flex items-center gap-1.5"
+              onClick={() => {
+                const enterGateway = useGameStore.getState().enterChapter3OnionGateway;
+                enterGateway();
+              }}
+              className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-slate-950 font-black rounded-lg text-xs transition-all shadow-lg hover:shadow-emerald-500/20 flex items-center gap-2 cursor-pointer group"
             >
-              <span>检视 CyberOS 1.1 破壁逃逸工作站</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>【启动洋葱应急网关 · 进入第三章 (Chapter 3)】</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
         </div>

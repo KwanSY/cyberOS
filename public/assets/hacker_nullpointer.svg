@@ -1,0 +1,12 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' width='256' height='256'>
+  <rect width='256' height='256' fill='#000000'/>
+  <rect x='28' y='28' width='200' height='200' fill='none' stroke='#ffffff' stroke-width='2'/>
+  <line x1='128' y1='12' x2='128' y2='28' stroke='#ffffff' stroke-width='2'/>
+  <line x1='128' y1='228' x2='128' y2='244' stroke='#ffffff' stroke-width='2'/>
+  <line x1='12' y1='128' x2='28' y2='128' stroke='#ffffff' stroke-width='2'/>
+  <line x1='228' y1='128' x2='244' y2='128' stroke='#ffffff' stroke-width='2'/>
+  <text x='128' y='110' fill='#ffffff' font-family='monospace' font-size='38' font-weight='900' text-anchor='middle' letter-spacing='2'>0x00</text>
+  <line x1='50' y1='130' x2='206' y2='130' stroke='#ffffff' stroke-width='3'/>
+  <text x='128' y='165' fill='#ffffff' font-family='monospace' font-size='18' font-weight='bold' text-anchor='middle' letter-spacing='4'>NULL_PTR</text>
+  <rect x='112' y='182' width='32' height='8' fill='#ffffff'/>
+</svg>

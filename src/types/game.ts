@@ -75,7 +75,10 @@ export type AppId =
   | 'trash'
   | 'systeminfo'
   | 'cyberplayer'
-  | 'notepad';
+  | 'notepad'
+  | 'hivenet'
+  | 'cybergit'
+  | 'chainexplorer';
 
 export interface WindowState {
   id: AppId;
@@ -111,6 +114,19 @@ export interface Chapter2DeductionSlots {
   card2_motive: string | null; // 核心掩盖动机: 保障天宇科技与远景生命上市融资
 }
 
+// Chapter 3 Deduction Slots (6 slots in 2 cards)
+export interface Chapter3DeductionSlots {
+  // Card 1: 审查事实一：深网蜂巢失踪案与算法异化
+  card1_victim: string | null; // 受害极客联盟: HIVE-9
+  card1_culprit: string | null; // 幕后清洗主体: OmniMind自主审查算法
+  card1_source: string | null; // 算法进化源头: 奇美拉神经兴奋剂受试者脑电数据
+
+  // Card 2: 审查事实二：创世原罪溯源与反制部署
+  card2_author: string | null; // 创世代码提交者: FA-9021
+  card2_funding: string | null; // 资本与算力来源: Aegis Horizon
+  card2_countermeasure: string | null; // 反制补丁核心机制: 开源去中心化神经阻断载荷
+}
+
 export type DeductionResultStatus = 'idle' | 'rejected' | 'approved';
 
 export interface DeductionSubmissionResult {
@@ -127,6 +143,12 @@ export interface DeductionSubmissionResult {
     card2_method?: boolean;
     card2_beneficiary?: boolean;
     card2_motive?: boolean;
+    card1_victim?: boolean;
+    card1_culprit?: boolean;
+    card1_source?: boolean;
+    card2_author?: boolean;
+    card2_funding?: boolean;
+    card2_countermeasure?: boolean;
   };
   feedback: string;
 }
@@ -155,6 +177,52 @@ export interface AudioTrack {
   transcript: SubtitleItem[];
 }
 
+// Chapter 3 CyberGit & Blockchain types
+export interface GitCommit {
+  hash: string;
+  date: string;
+  author: string;
+  message: string;
+  filesChanged: string[];
+  diff: string;
+}
+
+export interface BlockchainTx {
+  txHash: string;
+  from: string;
+  to: string;
+  value: string;
+  method: string;
+  timestamp?: string;
+  details?: string;
+}
+
+export interface BlockchainContract {
+  contractAddress: string;
+  contractName: string;
+  creator: string;
+  balance: string;
+  transactions: BlockchainTx[];
+}
+
+export interface OnionBoardPost {
+  id: string;
+  author: string;
+  authorAvatar: string;
+  authorRole: string;
+  date: string;
+  title: string;
+  content: string;
+  replies?: Array<{
+    id: string;
+    author: string;
+    authorAvatar: string;
+    authorRole: string;
+    date: string;
+    content: string;
+  }>;
+}
+
 export type NarrativeStage =
   | 'CASE_1_PLAYING'
   | 'CASE_1_FINISHED'
@@ -164,5 +232,11 @@ export type NarrativeStage =
   | 'OVERRIDE_ACTIVE'
   | 'CHAPTER_2_PLAYING'
   | 'CHAPTER_2_SOLVED'
-  | 'MELTDOWN_ESCAPE';
+  | 'MELTDOWN_ESCAPE'
+  | 'ONION_GATEWAY_PROMPT'
+  | 'BAD_ENDING_02'
+  | 'HIVE_MESH_ACTIVE'
+  | 'CASE_3_SOLVED'
+  | 'SANDBOX_COLLAPSE_ESCAPE';
+
 
